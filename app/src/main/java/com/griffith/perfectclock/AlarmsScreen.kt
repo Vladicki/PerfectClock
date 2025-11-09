@@ -54,20 +54,13 @@ import java.util.UUID
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun AlarmsScreen(gridConfig: GridLayoutConfig) {
+fun AlarmsScreen(gridConfig: GridLayoutConfig, alarms: List<Alarm>, onAlarmsChange: (List<Alarm>) -> Unit) {
     val context = LocalContext.current
     val alarmStorage = remember { AlarmStorage(context) }
-
-    var alarms by remember { mutableStateOf(alarmStorage.loadAlarms()) }
 
     var showDialog by remember { mutableStateOf(false) }
     val timePickerState = rememberTimePickerState()
     var useOnce by remember { mutableStateOf(true) }
-
-    LaunchedEffect(Unit) {
-        // Reload alarms if they change (e.g., from settings)
-        alarms = alarmStorage.loadAlarms()
-    }
 
     Box(modifier = Modifier.fillMaxSize()) {
                     Column(
@@ -77,7 +70,9 @@ fun AlarmsScreen(gridConfig: GridLayoutConfig) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Text(text = "Alarms Screen", fontSize = 24.sp, modifier = Modifier.padding(16.dp))
+                        if (alarms.isEmpty()) {
+                            Text(text = "Alarms Screen", fontSize = 24.sp, modifier = Modifier.padding(16.dp))
+                        }
         
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(gridConfig.columns),
@@ -94,13 +89,14 @@ fun AlarmsScreen(gridConfig: GridLayoutConfig) {
                             val index = updatedAlarms.indexOf(alarm)
                             if (index != -1) {
                                 updatedAlarms[index] = alarm.copy(isEnabled = it)
-                                alarms = updatedAlarms
-                                alarmStorage.saveAlarms(alarms)
+                                onAlarmsChange(updatedAlarms)
+                                alarmStorage.saveAlarms(updatedAlarms)
                             }
                         },
                         onDelete = {
-                            alarms = alarms.toMutableList().apply { remove(alarm) }
-                            alarmStorage.saveAlarms(alarms)
+                            val updatedAlarms = alarms.toMutableList().apply { remove(alarm) }
+                            onAlarmsChange(updatedAlarms)
+                            alarmStorage.saveAlarms(updatedAlarms)
                         },
                         showEdges = gridConfig.showEdges
                     )
@@ -138,8 +134,9 @@ fun AlarmsScreen(gridConfig: GridLayoutConfig) {
                             minute = timePickerState.minute,
                             useOnce = useOnce
                         )
-                        alarms = alarms.toMutableList().apply { add(newAlarm) }
-                        alarmStorage.saveAlarms(alarms)
+                        val updatedAlarms = alarms.toMutableList().apply { add(newAlarm) }
+                        onAlarmsChange(updatedAlarms)
+                        alarmStorage.saveAlarms(updatedAlarms)
                         showDialog = false
                     }) {
                         Text("Add")

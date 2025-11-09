@@ -20,7 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.griffith.perfectclock.components.AppTopAppBar
 import com.griffith.perfectclock.components.BottomTabBar
@@ -30,6 +29,7 @@ import com.griffith.perfectclock.AlarmStorage
 import com.griffith.perfectclock.TimerStorage
 import android.os.Build
 import androidx.annotation.RequiresApi
+import java.util.Collections.emptyList
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalFoundationApi::class)
@@ -47,7 +47,10 @@ class MainActivity : ComponentActivity() {
                 var gridConfig by remember { mutableStateOf(gridConfigStorage.loadGridConfig()) }
 
                 val alarmStorage = remember { AlarmStorage(context) }
+                var alarms by remember { mutableStateOf(alarmStorage.loadAlarms()) }
+
                 val timerStorage = remember { TimerStorage(context) }
+                var timers by remember { mutableStateOf(timerStorage.loadTimers()) }
 
                 var showClearAlarmsDialog by remember { mutableStateOf(false) }
                 var showClearTimersDialog by remember { mutableStateOf(false) }
@@ -67,8 +70,30 @@ class MainActivity : ComponentActivity() {
                             .padding(paddingValues)
                     ) { page ->
                         when (page) {
-                            0 -> TimersScreen(gridConfig = gridConfig)
-                            1 -> AlarmsScreen(gridConfig = gridConfig)
+                            0 -> TimersScreen(
+                                gridConfig = gridConfig,
+                                timers = timers,
+                                onUpdateTimer = { updatedTimer ->
+                                    val updatedTimers = timers.toMutableList()
+                                    val index = updatedTimers.indexOfFirst { it.id == updatedTimer.id }
+                                    if (index != -1) {
+                                        updatedTimers[index] = updatedTimer
+                                        timers = updatedTimers
+                                        timerStorage.saveTimers(updatedTimers)
+                                    }
+                                },
+                                onAddTimer = { newTimer ->
+                                    val updatedTimers = timers.toMutableList().apply { add(newTimer) }
+                                    timers = updatedTimers
+                                    timerStorage.saveTimers(updatedTimers)
+                                },
+                                onDeleteTimer = { timerToDelete ->
+                                    val updatedTimers = timers.toMutableList().apply { remove(timerToDelete) }
+                                    timers = updatedTimers
+                                    timerStorage.saveTimers(updatedTimers)
+                                }
+                            )
+                            1 -> AlarmsScreen(gridConfig = gridConfig, alarms = alarms, onAlarmsChange = { newAlarms -> alarms = newAlarms.toMutableList() })
                             2 -> StopwatchesScreen()
                         }
                     }
@@ -108,6 +133,7 @@ class MainActivity : ComponentActivity() {
                         confirmButton = {
                             TextButton(onClick = {
                                 alarmStorage.saveAlarms(emptyList())
+                                alarms = emptyList() // Update the state in MainActivity
                                 showClearAlarmsDialog = false
                             }) {
                                 Text("Confirm")
@@ -129,6 +155,7 @@ class MainActivity : ComponentActivity() {
                         confirmButton = {
                             TextButton(onClick = {
                                 timerStorage.saveTimers(emptyList())
+                                timers = emptyList() // Update the state in MainActivity
                                 showClearTimersDialog = false
                             }) {
                                 Text("Confirm")
@@ -147,10 +174,4 @@ class MainActivity : ComponentActivity() {
 }
 
 
-@Preview(showBackground = true)
-@Composable
-fun DefaultPreview() {
-    PerfectClockTheme {
-        // You can add a preview of your main screen here if you want
-    }
-}
+
