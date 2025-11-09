@@ -43,7 +43,9 @@ fun SettingsScreen() {
             onGridConfigChange = { newConfig ->
                 gridConfig = newConfig
                 gridConfigStorage.saveGridConfig(newConfig)
-            }
+            },
+            onClearAlarms = { /* Handled in MainActivity */ },
+            onClearTimers = { /* Handled in MainActivity */ }
         )
     }
 }

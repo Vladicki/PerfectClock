@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -79,41 +80,38 @@ class TimerStorage(context: Context) {
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun TimersScreen() {
+fun TimersScreen(gridConfig: GridLayoutConfig) {
     val context = LocalContext.current
     val timerStorage = remember { TimerStorage(context) }
-    val gridConfigStorage = remember { GridConfigStorage(context) }
 
     var timers by remember { mutableStateOf(timerStorage.loadTimers()) }
-    var gridConfig by remember { mutableStateOf(gridConfigStorage.loadGridConfig()) }
 
     var showDialog by remember { mutableStateOf(false) }
     val timePickerState = rememberTimePickerState() // Using TimePickerState for simplicity, though timers usually have seconds
 
     LaunchedEffect(Unit) {
-        // Reload timers and grid config if they change (e.g., from settings)
+        // Reload timers if they change (e.g., from settings)
         timers = timerStorage.loadTimers()
-        gridConfig = gridConfigStorage.loadGridConfig()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(text = "Timers Screen", fontSize = 24.sp, modifier = Modifier.padding(16.dp))
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(gridConfig.columns),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(timers) { timer ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .wrapContentSize(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(text = "Timers Screen", fontSize = 24.sp, modifier = Modifier.padding(16.dp))
+        
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(gridConfig.columns),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {                items(timers) { timer ->
                     TimerItem(
                         timer = timer,
                         onToggle = {
@@ -187,7 +185,7 @@ fun TimerItem(timer: Timer, onToggle: (Boolean) -> Unit, onDelete: () -> Unit, s
         modifier = Modifier
             .fillMaxWidth()
             .height(120.dp) // Adjust height as needed for grid
-            .then(if (showEdges) Modifier.border(BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface), RoundedCornerShape(8.dp)) else Modifier)
+            .then(if (showEdges) Modifier.border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary), RoundedCornerShape(8.dp)) else Modifier)
             .combinedClickable(
                 onClick = { /* TODO: Implement edit timer */ },
                 onLongClick = { onDelete() }

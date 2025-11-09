@@ -26,6 +26,8 @@ import com.griffith.perfectclock.components.AppTopAppBar
 import com.griffith.perfectclock.components.BottomTabBar
 import com.griffith.perfectclock.ui.theme.PerfectClockTheme
 import com.griffith.perfectclock.SettingsDialogContent
+import com.griffith.perfectclock.AlarmStorage
+import com.griffith.perfectclock.TimerStorage
 import android.os.Build
 import androidx.annotation.RequiresApi
 
@@ -44,6 +46,12 @@ class MainActivity : ComponentActivity() {
                 val gridConfigStorage = remember { GridConfigStorage(context) }
                 var gridConfig by remember { mutableStateOf(gridConfigStorage.loadGridConfig()) }
 
+                val alarmStorage = remember { AlarmStorage(context) }
+                val timerStorage = remember { TimerStorage(context) }
+
+                var showClearAlarmsDialog by remember { mutableStateOf(false) }
+                var showClearTimersDialog by remember { mutableStateOf(false) }
+
                 Scaffold(
                     topBar = {
                         AppTopAppBar(title = titles[pagerState.currentPage], onSettingsClick = { showSettingsDialog = true })
@@ -59,8 +67,8 @@ class MainActivity : ComponentActivity() {
                             .padding(paddingValues)
                     ) { page ->
                         when (page) {
-                            0 -> TimersScreen()
-                            1 -> AlarmsScreen()
+                            0 -> TimersScreen(gridConfig = gridConfig)
+                            1 -> AlarmsScreen(gridConfig = gridConfig)
                             2 -> StopwatchesScreen()
                         }
                     }
@@ -76,7 +84,9 @@ class MainActivity : ComponentActivity() {
                         text = {
                             SettingsDialogContent(
                                 gridConfig = gridConfig,
-                                onGridConfigChange = { newConfig -> gridConfig = newConfig }
+                                onGridConfigChange = { newConfig -> gridConfig = newConfig },
+                                onClearAlarms = { showClearAlarmsDialog = true },
+                                onClearTimers = { showClearTimersDialog = true }
                             )
                         },
                         confirmButton = {
@@ -85,6 +95,48 @@ class MainActivity : ComponentActivity() {
                                 showSettingsDialog = false
                             }) {
                                 Text("Close")
+                            }
+                        }
+                    )
+                }
+
+                if (showClearAlarmsDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showClearAlarmsDialog = false },
+                        title = { Text("Confirm Clear Alarms") },
+                        text = { Text("Are you sure you want to clear all alarms?") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                alarmStorage.saveAlarms(emptyList())
+                                showClearAlarmsDialog = false
+                            }) {
+                                Text("Confirm")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showClearAlarmsDialog = false }) {
+                                Text("Cancel")
+                            }
+                        }
+                    )
+                }
+
+                if (showClearTimersDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showClearTimersDialog = false },
+                        title = { Text("Confirm Clear Timers") },
+                        text = { Text("Are you sure you want to clear all timers?") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                timerStorage.saveTimers(emptyList())
+                                showClearTimersDialog = false
+                            }) {
+                                Text("Confirm")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showClearTimersDialog = false }) {
+                                Text("Cancel")
                             }
                         }
                     )

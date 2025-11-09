@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -53,42 +54,39 @@ import java.util.UUID
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun AlarmsScreen() {
+fun AlarmsScreen(gridConfig: GridLayoutConfig) {
     val context = LocalContext.current
     val alarmStorage = remember { AlarmStorage(context) }
-    val gridConfigStorage = remember { GridConfigStorage(context) }
 
     var alarms by remember { mutableStateOf(alarmStorage.loadAlarms()) }
-    var gridConfig by remember { mutableStateOf(gridConfigStorage.loadGridConfig()) }
 
     var showDialog by remember { mutableStateOf(false) }
     val timePickerState = rememberTimePickerState()
     var useOnce by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
-        // Reload alarms and grid config if they change (e.g., from settings)
+        // Reload alarms if they change (e.g., from settings)
         alarms = alarmStorage.loadAlarms()
-        gridConfig = gridConfigStorage.loadGridConfig()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(text = "Alarms Screen", fontSize = 24.sp, modifier = Modifier.padding(16.dp))
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(gridConfig.columns),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(alarms) { alarm ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .wrapContentSize(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(text = "Alarms Screen", fontSize = 24.sp, modifier = Modifier.padding(16.dp))
+        
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(gridConfig.columns),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {                items(alarms) { alarm ->
                     AlarmItem(
                         alarm = alarm,
                         onToggle = {
@@ -165,7 +163,7 @@ fun AlarmItem(alarm: Alarm, onToggle: (Boolean) -> Unit, onDelete: () -> Unit, s
         modifier = Modifier
             .fillMaxWidth()
             .height(120.dp) // Adjust height as needed for 6x4 grid
-            .then(if (showEdges) Modifier.border(BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface), RoundedCornerShape(8.dp)) else Modifier)
+            .then(if (showEdges) Modifier.border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary), RoundedCornerShape(8.dp)) else Modifier)
             .combinedClickable(
                 onClick = { /* TODO: Implement edit alarm */ },
                 onLongClick = { onDelete() }
