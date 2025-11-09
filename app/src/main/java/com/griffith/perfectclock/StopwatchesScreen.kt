@@ -16,15 +16,15 @@ import kotlinx.coroutines.isActive
 @Composable
 fun StopwatchesScreen() {
     var isRunning by remember { mutableStateOf(false) }
-    var startTime by remember { mutableStateOf(0L) }
-    var pauseOffset by remember { mutableStateOf(0L) }
+    var startTime by remember { mutableStateOf(0L) } // time when started or resumed
+    var stopTime by remember { mutableStateOf(0L) }  // time when stopped/paused
     var elapsedTime by remember { mutableStateOf(0L) }
 
     LaunchedEffect(isRunning) {
         if (isRunning) {
-            while (isActive) {
-                delay(1L) // Update every 1ms for millisecond accuracy
-                elapsedTime = pauseOffset + (System.currentTimeMillis() - startTime)
+            while (isActive && isRunning) {
+                elapsedTime = System.currentTimeMillis() - startTime
+                delay(10L)
             }
         }
     }
@@ -37,48 +37,65 @@ fun StopwatchesScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // Time display
             Text(
                 text = formatTime(elapsedTime),
                 fontSize = 60.sp,
                 modifier = Modifier.padding(bottom = 32.dp)
             )
 
+            // Start / Stop button
             Button(
                 onClick = {
                     if (isRunning) {
-                        pauseOffset += System.currentTimeMillis() - startTime // Accumulate paused time
+                        // STOP
+                        stopTime = System.currentTimeMillis()
                     } else {
-                        startTime = System.currentTimeMillis() // Set new start time for this segment
+                        // START or RESUME
+                        if (startTime == 0L) {
+                            // first start
+                            startTime = System.currentTimeMillis()
+                        } else {
+                            // resume: shift startTime forward by paused duration
+                            val pausedDuration = System.currentTimeMillis() - stopTime
+                            startTime += pausedDuration
+                        }
                     }
                     isRunning = !isRunning
                 },
-                colors = if (isRunning) ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)) else ButtonDefaults.buttonColors(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isRunning) Color(0xFFf0b67a) else Color(0xFFbd98eb)
+                ),
                 modifier = Modifier.fillMaxWidth(0.6f)
             ) {
-                Text(text = if (isRunning) "Stop" else "Start")
+                Text(if (isRunning) "Stop" else "Start")
             }
 
+            // Reset button
             if (elapsedTime > 0) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = {
                         isRunning = false
                         startTime = 0L
-                        pauseOffset = 0L
-                        elapsedTime = L
+                        stopTime = 0L
+                        elapsedTime = 0L
                     },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFed6d8b)),
                     modifier = Modifier.fillMaxWidth(0.6f)
                 ) {
-                    Text(text = "Reset")
+                    Text("Reset")
                 }
             }
         }
     }
 }
 
+// Format milliseconds to MM:SS:CS
 fun formatTime(milliseconds: Long): String {
-    val minutes = (milliseconds / (1000 * 60)) % 60
-    val seconds = (milliseconds / 1000) % 60
-    val ms = (milliseconds % 1000) / 10 // Two digits for milliseconds
-    return String.format("%02d:%02d:%02d", minutes, seconds, ms)
+    val totalSeconds = milliseconds / 1000
+    val minutes = (totalSeconds / 60) % 60
+    val seconds = totalSeconds % 60
+    val hundredths = (milliseconds % 1000) / 10
+    return String.format("%02d:%02d:%02d", minutes, seconds, hundredths)
 }

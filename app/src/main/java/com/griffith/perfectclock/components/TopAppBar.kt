@@ -14,11 +14,11 @@ import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppTopAppBar(title: String) {
+fun AppTopAppBar(title: String, onSettingsClick: () -> Unit) {
     TopAppBar(
         title = { Text(text = title) },
         actions = {
-            IconButton(onClick = { /* TODO: Handle settings click */ }) {
+            IconButton(onClick = onSettingsClick) {
                 Icon(Icons.Filled.Settings, contentDescription = "Settings")
             }
         }

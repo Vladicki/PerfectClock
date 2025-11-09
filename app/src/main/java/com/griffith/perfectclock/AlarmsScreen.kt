@@ -1,6 +1,5 @@
 package com.griffith.perfectclock
 
-import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
@@ -51,48 +50,24 @@ import androidx.compose.ui.unit.sp
 import java.time.LocalTime
 import java.util.UUID
 
-// Placeholder for Timer data class
-data class Timer(
-    val id: String,
-    var hour: Int,
-    var minute: Int,
-    var second: Int,
-    var isEnabled: Boolean = true
-) {
-    fun getTimeString(): String {
-        return String.format("%02d:%02d:%02d", hour, minute, second)
-    }
-}
-
-// Placeholder for TimerStorage
-class TimerStorage(context: Context) {
-    fun saveTimers(timers: List<Timer>) {
-        // TODO: Implement actual storage using SharedPreferences or DataStore
-    }
-
-    fun loadTimers(): MutableList<Timer> {
-        // TODO: Implement actual loading
-        return mutableListOf()
-    }
-}
-
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun TimersScreen() {
+fun AlarmsScreen() {
     val context = LocalContext.current
-    val timerStorage = remember { TimerStorage(context) }
+    val alarmStorage = remember { AlarmStorage(context) }
     val gridConfigStorage = remember { GridConfigStorage(context) }
 
-    var timers by remember { mutableStateOf(timerStorage.loadTimers()) }
+    var alarms by remember { mutableStateOf(alarmStorage.loadAlarms()) }
     var gridConfig by remember { mutableStateOf(gridConfigStorage.loadGridConfig()) }
 
     var showDialog by remember { mutableStateOf(false) }
-    val timePickerState = rememberTimePickerState() // Using TimePickerState for simplicity, though timers usually have seconds
+    val timePickerState = rememberTimePickerState()
+    var useOnce by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
-        // Reload timers and grid config if they change (e.g., from settings)
-        timers = timerStorage.loadTimers()
+        // Reload alarms and grid config if they change (e.g., from settings)
+        alarms = alarmStorage.loadAlarms()
         gridConfig = gridConfigStorage.loadGridConfig()
     }
 
@@ -102,7 +77,7 @@ fun TimersScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(text = "Timers Screen", fontSize = 24.sp, modifier = Modifier.padding(16.dp))
+            Text(text = "Alarms Screen", fontSize = 24.sp, modifier = Modifier.padding(16.dp))
 
             LazyVerticalGrid(
                 columns = GridCells.Fixed(gridConfig.columns),
@@ -113,21 +88,21 @@ fun TimersScreen() {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(timers) { timer ->
-                    TimerItem(
-                        timer = timer,
+                items(alarms) { alarm ->
+                    AlarmItem(
+                        alarm = alarm,
                         onToggle = {
-                            val updatedTimers = timers.toMutableList()
-                            val index = updatedTimers.indexOf(timer)
+                            val updatedAlarms = alarms.toMutableList()
+                            val index = updatedAlarms.indexOf(alarm)
                             if (index != -1) {
-                                updatedTimers[index] = timer.copy(isEnabled = it)
-                                timers = updatedTimers
-                                timerStorage.saveTimers(timers)
+                                updatedAlarms[index] = alarm.copy(isEnabled = it)
+                                alarms = updatedAlarms
+                                alarmStorage.saveAlarms(alarms)
                             }
                         },
                         onDelete = {
-                            timers = timers.toMutableList().apply { remove(timer) }
-                            timerStorage.saveTimers(timers)
+                            alarms = alarms.toMutableList().apply { remove(alarm) }
+                            alarmStorage.saveAlarms(alarms)
                         },
                         showEdges = gridConfig.showEdges
                     )
@@ -141,29 +116,32 @@ fun TimersScreen() {
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
         ) {
-            Icon(Icons.Filled.Add, "Add new timer.")
+            Icon(Icons.Filled.Add, "Add new alarm.")
         }
 
         if (showDialog) {
             AlertDialog(
                 onDismissRequest = { showDialog = false },
-                title = { Text("Add New Timer") },
+                title = { Text("Add New Alarm") },
                 text = {
                     Column {
                         TimeInput(state = timePickerState)
-                        // For simplicity, not adding "use once" for timers yet
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = useOnce, onCheckedChange = { useOnce = it })
+                            Text("Use Once")
+                        }
                     }
                 },
                 confirmButton = {
                     TextButton(onClick = {
-                        val newTimer = Timer(
+                        val newAlarm = Alarm(
                             id = UUID.randomUUID().toString(),
                             hour = timePickerState.hour,
                             minute = timePickerState.minute,
-                            second = 0 // Default to 0 seconds for now
+                            useOnce = useOnce
                         )
-                        timers = timers.toMutableList().apply { add(newTimer) }
-                        timerStorage.saveTimers(timers)
+                        alarms = alarms.toMutableList().apply { add(newAlarm) }
+                        alarmStorage.saveAlarms(alarms)
                         showDialog = false
                     }) {
                         Text("Add")
@@ -182,14 +160,14 @@ fun TimersScreen() {
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun TimerItem(timer: Timer, onToggle: (Boolean) -> Unit, onDelete: () -> Unit, showEdges: Boolean) {
+fun AlarmItem(alarm: Alarm, onToggle: (Boolean) -> Unit, onDelete: () -> Unit, showEdges: Boolean) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(120.dp) // Adjust height as needed for grid
+            .height(120.dp) // Adjust height as needed for 6x4 grid
             .then(if (showEdges) Modifier.border(BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface), RoundedCornerShape(8.dp)) else Modifier)
             .combinedClickable(
-                onClick = { /* TODO: Implement edit timer */ },
+                onClick = { /* TODO: Implement edit alarm */ },
                 onLongClick = { onDelete() }
             )
     ) {
@@ -200,15 +178,15 @@ fun TimerItem(timer: Timer, onToggle: (Boolean) -> Unit, onDelete: () -> Unit, s
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(text = timer.getTimeString(), fontSize = 24.sp)
+            Text(text = alarm.getTimeString(), fontSize = 24.sp)
             Spacer(modifier = Modifier.height(8.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(text = "Enabled") // Placeholder for timer status
-                Switch(checked = timer.isEnabled, onCheckedChange = onToggle)
+                Text(text = if (alarm.useOnce) "Once" else "Repeat")
+                Switch(checked = alarm.isEnabled, onCheckedChange = onToggle)
             }
         }
     }
