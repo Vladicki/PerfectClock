@@ -1,0 +1,45 @@
+Milestone 1: Perfect Clock
+Main idea:
+Perfect Clock is simple: build a clock app that actually looks good and feels easy to use—something you’d actually want instead of the standard Android clock. Perfect Clock puts usability and flexibility first, wrapping all the usual features in a clean, customizable design.
+Down the line, you’ll be able to set up your own grid layout, dropping timers, alarms, and presets wherever you want. You can resize buttons, scroll through all your alarms and timers, and really make the app fit your day-to-day needs. Managing a bunch of timers or alarms should be straightforward and personal, not a hassle.
+
+For this first milestone, the focus is laying down the basics:
+Set up the core UI and navigation
+Built everything around a single-activity structure with Jetpack Compose.
+Added a bottom navigation bar, so you can switch quickly between Clock, Timer, and Alarm screens.
+Build out the main screens with basic features
+Clock Screen: Shows the time front and center with a clean, modern look.
+Timer Screen: Lets you start and stop a timer—just the basics for now.
+Alarm Screen: Lists sample alarms in a scrollable list, ready for adding and editing in future updates.
+Stopwatch: Big centered Time and nicely located buttons, with a "Lap" button to record lap times, real-time lap duration and finish updates for the current lap, and a stable layout that prevents buttons from moving.
+
+
+
+Initial settings and customization placeholders
+UI ready for future customizations
+Set the groundwork to support resizable tiles, so you’ll be able to choose layouts with 1, 2, or 4 tiles per row.
+Made sure scrolling through alarms and timers feels smooth.
+Added a "Pages" section in settings where users can toggle pages on/off, and add/remove custom pages.
+
+UI Design
+The overall look is minimal, modern, and stays out of your way:
+Single-activity layout using Jetpack Compose navigation.
+Each screen has a clear purpose:
+Timer Screen: Central timer with a big, clear start/stop button and easy +1 min options.
+Alarm Screen: Scrollable list of alarms, each with a simple toggle to enable or disable. Custom tile options are coming soon.
+Stopwatch: Big centered Time and nicely located buttons, no necessary clutter or distructions. Now includes lap functionality with real-time updates for the current lap.
+
+Visual touches:
+Bright accent colors for anything you interact with.
+Rounded cards and buttons for a fresh, modern feel.
+No unnecessary clutter—just the info you actually need.
+
+What’s next
+Here’s what’s lined up for future milestones:
+Added placeholder settings for picking sounds, turning on vibration, and setting snooze length.
+Customizable tile and grid layouts—place alarms and timers anywhere, resize as you like.
+Smarter timer and alarm features—presets, recurring timers, and managing more alarms at once.
+Better scrolling and gestures for long lists.
+More personalization—dark and light modes, color themes, font tweaks.
+Notifications you can interact with—stop or snooze alarms right from the notification bar.
+With this first milestone, Perfect Clock is off to a strong start: it works, it looks good, and it’s ready for a lot more customization down the road.
