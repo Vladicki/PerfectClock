@@ -21,8 +21,10 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -35,6 +37,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimeInput
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -114,40 +117,76 @@ fun AlarmsScreen(gridConfig: GridLayoutConfig, alarms: List<Alarm>, onAlarmsChan
         }
 
         if (showDialog) {
+            var usingDial by remember { mutableStateOf(true) }
+
             AlertDialog(
                 onDismissRequest = { showDialog = false },
-                title = { Text("Add New Alarm") },
+                title = { Text("Add Alarm") },
                 text = {
                     Column {
-                        TimeInput(state = timePickerState)
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Dial or Input picker
+                if (usingDial) {
+                    TimePicker(state = timePickerState)
+                } else {
+                    TimeInput(state = timePickerState)
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked = useOnce, onCheckedChange = { useOnce = it })
                             Text("Use Once")
                         }
                     }
-                },
+                },                
                 confirmButton = {
-                    TextButton(onClick = {
-                        val newAlarm = Alarm(
-                            id = UUID.randomUUID().toString(),
-                            hour = timePickerState.hour,
-                            minute = timePickerState.minute,
-                            useOnce = useOnce
-                        )
-                        val updatedAlarms = alarms.toMutableList().apply { add(newAlarm) }
-                        onAlarmsChange(updatedAlarms)
-                        alarmStorage.saveAlarms(updatedAlarms)
-                        showDialog = false
-                    }) {
-                        Text("Add")
+                    Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(end = 6.dp, bottom = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+                        // Toggle keyboard/dial
+                        IconButton(onClick = { usingDial = !usingDial }) {
+                            Icon(
+                                imageVector = if (usingDial) Icons.Default.Keyboard else Icons.Default.AccessTime,
+                                contentDescription = "Toggle Input Mode"
+                            )
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Cancel
+                            TextButton(onClick = { showDialog = false }) {
+                                Text("Cancel")
+                            }
+
+                            TextButton(onClick = {
+                                val newAlarm = Alarm(
+                                    id = UUID.randomUUID().toString(),
+                                    hour = timePickerState.hour,
+                                    minute = timePickerState.minute,
+                                    useOnce = useOnce
+                                )
+                                val updatedAlarms = alarms.toMutableList().apply { add(newAlarm) }
+                                onAlarmsChange(updatedAlarms)
+                                alarmStorage.saveAlarms(updatedAlarms)
+                                showDialog = false
+                            }) {
+                                Text("Add")
+                            }
+                        }
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDialog = false }) {
-                        Text("Cancel")
-                    }
-                }
+                    // TextButton(onClick = { showDialog = false }) {
+                    //     Text("Cancel")
+                    // }
+            }
             )
+
         }
     }
 }
