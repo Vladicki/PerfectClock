@@ -17,7 +17,16 @@ data class Timer(
         val hours = remainingSeconds / 3600
         val minutes = (remainingSeconds % 3600) / 60
         val seconds = remainingSeconds % 60
-        return String.format("%02d:%02d:%02d", hours, minutes, seconds)
+    return when {
+        hours > 0 ->
+            String.format("%d:%02d:%02d", hours, minutes, seconds)
+
+        minutes > 0 ->
+            String.format("%d:%02d", minutes, seconds)
+
+        else ->
+            String.format("%d", seconds)
+    }
     }
 }
 
