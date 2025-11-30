@@ -11,7 +11,11 @@ data class Timer(
     var isRunning: Boolean = false,
     var isFinished: Boolean = false,
     var useOnce: Boolean = true,
-    var isDismissed: Boolean = false
+    var isDismissed: Boolean = false,
+    var x: Int = 0,
+    var y: Int = 0,
+    var width: Int = 1,
+    var height: Int = 1
 ) {
     fun getTimeString(): String {
         val hours = remainingSeconds / 3600
