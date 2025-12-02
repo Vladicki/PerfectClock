@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -43,13 +44,17 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import com.griffith.perfectclock.components.GridHighlight
 
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.griffith.perfectclock.components.ItemCard
+import java.time.LocalTime // Added import for LocalTime
 import java.util.UUID
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -70,6 +75,7 @@ fun AlarmsScreen(
     var useOnce by remember { mutableStateOf(true) }
     var isAnyTimerDragging by remember { mutableStateOf(false) }
     var gridContainerOffset by remember { mutableStateOf(Offset.Zero) }
+    val haptic = LocalHapticFeedback.current
 
     Box(modifier = Modifier.fillMaxSize()) {
         GridBackground(gridConfig = gridConfig, isDragging = isAnyTimerDragging)
@@ -137,6 +143,16 @@ fun AlarmsScreen(
 
                         // Dial or Input picker
                         if (usingDial) {
+                            var lastHour by remember { mutableStateOf(timePickerState.hour) }
+                            var lastMinute by remember { mutableStateOf(timePickerState.minute) }
+
+                            LaunchedEffect(timePickerState.hour, timePickerState.minute) {
+                                if (lastHour != timePickerState.hour || lastMinute != timePickerState.minute) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    lastHour = timePickerState.hour
+                                    lastMinute = timePickerState.minute
+                                }
+                            }
                             TimePicker(state = timePickerState)
                         } else {
                             TimeInput(state = timePickerState)
@@ -145,7 +161,7 @@ fun AlarmsScreen(
                         Spacer(modifier = Modifier.height(6.dp))
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = useOnce, onCheckedChange = { useOnce = it })
+                            Checkbox(checked = !useOnce, onCheckedChange = { useOnce = !it })
                             Text("Use Once")
                         }
                     }
@@ -192,8 +208,7 @@ fun AlarmsScreen(
                                 onAddAlarm(
                                     Alarm(
                                         id = UUID.randomUUID().toString(),
-                                        hour = timePickerState.hour,
-                                        minute = timePickerState.minute,
+                                        time = LocalTime.of(timePickerState.hour, timePickerState.minute), // Updated to use LocalTime
                                         useOnce = useOnce,
                                         x = newX,
                                         y = newY
@@ -247,24 +262,39 @@ fun AlarmItem(
         modifier = Modifier.fillMaxSize(),
         gridContainerOffset = gridContainerOffset
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(text = alarm.getTimeString(), fontSize = 24.sp)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Text(text = if (alarm.useOnce) "Once" else "Repeat")
-                Switch(
-                    checked = alarm.isEnabled,
-                    onCheckedChange = { onUpdateAlarm(alarm.copy(isEnabled = it)) }
+                Text(text = alarm.getTimeString(), fontSize = 24.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = if (alarm.useOnce) "Once" else "Repeat")
+                    Switch(
+                        checked = alarm.isEnabled,
+                        onCheckedChange = { onUpdateAlarm(alarm.copy(isEnabled = it)) }
+                    )
+                }
+            }
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(4.dp)
+                    .size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Delete Alarm",
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
             }
         }

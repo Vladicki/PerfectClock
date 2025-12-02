@@ -78,6 +78,7 @@ fun TimersScreen(
     var showDialog by remember { mutableStateOf(false) }
     var isAnyTimerDragging by remember { mutableStateOf(false) }
     var gridContainerOffset by remember { mutableStateOf(Offset.Zero) }
+    var showShakeItOffDialogForTimer by remember { mutableStateOf<Timer?>(null) } // State for shake it off dialog
 
     // -------------------------
     // ROOT LAYERED CONTAINER
@@ -125,7 +126,12 @@ fun TimersScreen(
                         showEdges = gridConfig.showEdges,
                         isAnyTimerDragging = isAnyTimerDragging,
                         onDraggingChange = { isAnyTimerDragging = it },
-                        gridContainerOffset = gridContainerOffset
+                        gridContainerOffset = gridContainerOffset,
+                        onTimerFinished = { finishedTimer ->
+                            if (!finishedTimer.isDismissed) {
+                                showShakeItOffDialogForTimer = finishedTimer
+                            }
+                        }
                     )
                 }
             }
@@ -218,6 +224,44 @@ fun TimersScreen(
             onClose = { showDialog = false }
         )
     }
+
+    // -------------------------
+    // SHAKE IT OFF DIALOG FOR TIMERS
+    // -------------------------
+    showShakeItOffDialogForTimer?.let { timer ->
+        ShakeItOffDialog(
+            onShakeDismiss = {
+                if (timer.useOnce) {
+                    onDeleteTimer(timer)
+                } else {
+                    onUpdateTimer(
+                        timer.copy(
+                            remainingSeconds = timer.initialSeconds,
+                            isRunning = false,
+                            isFinished = false,
+                            isDismissed = true
+                        )
+                    )
+                }
+                showShakeItOffDialogForTimer = null
+            },
+            onManualDismiss = {
+                if (timer.useOnce) {
+                    onDeleteTimer(timer)
+                } else {
+                    onUpdateTimer(
+                        timer.copy(
+                            remainingSeconds = timer.initialSeconds,
+                            isRunning = false,
+                            isFinished = false,
+                            isDismissed = true
+                        )
+                    )
+                }
+                showShakeItOffDialogForTimer = null
+            }
+        )
+    }
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -234,7 +278,8 @@ fun TimerItem(
     showEdges: Boolean,
     isAnyTimerDragging: Boolean,
     onDraggingChange: (Boolean) -> Unit,
-    gridContainerOffset: Offset
+    gridContainerOffset: Offset,
+    onTimerFinished: (Timer) -> Unit
 ) {
     var currentRemainingSeconds by remember(timer.id) { mutableStateOf(timer.remainingSeconds) }
     var isRunning by remember(timer.id) { mutableStateOf(timer.isRunning) }
@@ -259,6 +304,7 @@ fun TimerItem(
                         isDismissed = false
                     )
                 )
+                onTimerFinished(timer) // Call the callback when timer finishes
             }
         }
     }

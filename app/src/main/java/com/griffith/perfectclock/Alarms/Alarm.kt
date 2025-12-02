@@ -1,16 +1,15 @@
 package com.griffith.perfectclock
 
 import java.time.LocalTime
-
-
+import java.time.format.DateTimeFormatter // Added import for DateTimeFormatter
 import java.util.UUID
 
 data class Alarm(
     override val id: String = UUID.randomUUID().toString(),
-    val hour: Int,
-    val minute: Int,
+    val time: LocalTime, 
     val useOnce: Boolean,
     val isEnabled: Boolean = true,
+    val message: String = "",
     override val x: Int = 0,
     override val y: Int = 0,
     override val width: Int = 1,
@@ -18,7 +17,7 @@ data class Alarm(
 ) : GridItem {
 
     fun getTimeString(): String {
-        return String.format("%02d:%02d", hour, minute)
+        return time.format(DateTimeFormatter.ofPattern("HH:mm")) // Updated to use LocalTime
     }
 
     override fun copyWithNewGridValues(x: Int, y: Int, width: Int, height: Int): GridItem {
