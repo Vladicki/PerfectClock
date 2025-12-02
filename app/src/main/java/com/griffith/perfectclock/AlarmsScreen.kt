@@ -2,31 +2,24 @@ package com.griffith.perfectclock
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.border
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -40,68 +33,84 @@ import androidx.compose.material3.TimeInput
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.setValue
+import com.griffith.perfectclock.components.GridHighlight
+
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.time.LocalTime
+import com.griffith.perfectclock.components.ItemCard
 import java.util.UUID
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun AlarmsScreen(gridConfig: GridLayoutConfig, alarms: List<Alarm>, onAlarmsChange: (List<Alarm>) -> Unit) {
+fun AlarmsScreen(
+    gridConfig: GridLayoutConfig,
+    alarms: List<Alarm>,
+    onUpdateAlarm: (Alarm) -> Unit,
+    onAddAlarm: (Alarm) -> Unit,
+    onDeleteAlarm: (Alarm) -> Unit
+) {
     val context = LocalContext.current
     val alarmStorage = remember { AlarmStorage(context) }
 
     var showDialog by remember { mutableStateOf(false) }
     val timePickerState = rememberTimePickerState()
     var useOnce by remember { mutableStateOf(true) }
+    var isAnyTimerDragging by remember { mutableStateOf(false) }
+    var gridContainerOffset by remember { mutableStateOf(Offset.Zero) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .wrapContentSize(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        if (alarms.isEmpty()) {
-                            Text(text = "Alarms Screen", fontSize = 24.sp, modifier = Modifier.padding(16.dp))
-                        }
-        
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(gridConfig.columns),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {                items(alarms) { alarm ->
+        GridBackground(gridConfig = gridConfig, isDragging = isAnyTimerDragging)
+
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp)
+                .onGloballyPositioned {
+                    gridContainerOffset = it.localToWindow(Offset.Zero)
+                }
+        ) {
+            val cellWidth = maxWidth / gridConfig.columns
+            val cellHeight = maxHeight / gridConfig.rows
+
+            GridHighlight(gridConfig, cellWidth, cellHeight, gridContainerOffset)
+
+            alarms.forEach { alarm ->
+                val timerModifier = Modifier
+                    .offset(
+                        x = (alarm.x * cellWidth.value).dp,
+                        y = (alarm.y * cellHeight.value).dp
+                    )
+                    .size(
+                        width = (alarm.width * cellWidth.value).dp,
+                        height = (alarm.height * cellHeight.value).dp
+                    )
+
+                Box(modifier = timerModifier.padding(4.dp)) {
                     AlarmItem(
                         alarm = alarm,
-                        onToggle = {
-                            val updatedAlarms = alarms.toMutableList()
-                            val index = updatedAlarms.indexOf(alarm)
-                            if (index != -1) {
-                                updatedAlarms[index] = alarm.copy(isEnabled = it)
-                                onAlarmsChange(updatedAlarms)
-                                alarmStorage.saveAlarms(updatedAlarms)
-                            }
-                        },
-                        onDelete = {
-                            val updatedAlarms = alarms.toMutableList().apply { remove(alarm) }
-                            onAlarmsChange(updatedAlarms)
-                            alarmStorage.saveAlarms(updatedAlarms)
-                        },
-                        showEdges = gridConfig.showEdges
+                        alarms = alarms,
+                        gridConfig = gridConfig,
+                        cellWidth = cellWidth,
+                        cellHeight = cellHeight,
+                        onUpdateAlarm = onUpdateAlarm,
+                        onDelete = { onDeleteAlarm(alarm) },
+                        showEdges = gridConfig.showEdges,
+                        isAnyTimerDragging = isAnyTimerDragging,
+                        onDraggingChange = { isAnyTimerDragging = it },
+                        gridContainerOffset = gridContainerOffset
                     )
                 }
             }
@@ -124,31 +133,31 @@ fun AlarmsScreen(gridConfig: GridLayoutConfig, alarms: List<Alarm>, onAlarmsChan
                 title = { Text("Add Alarm") },
                 text = {
                     Column {
-                Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                // Dial or Input picker
-                if (usingDial) {
-                    TimePicker(state = timePickerState)
-                } else {
-                    TimeInput(state = timePickerState)
-                }
+                        // Dial or Input picker
+                        if (usingDial) {
+                            TimePicker(state = timePickerState)
+                        } else {
+                            TimeInput(state = timePickerState)
+                        }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked = useOnce, onCheckedChange = { useOnce = it })
                             Text("Use Once")
                         }
                     }
-                },                
+                },
                 confirmButton = {
                     Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(end = 6.dp, bottom = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(end = 6.dp, bottom = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         // Toggle keyboard/dial
                         IconButton(onClick = { usingDial = !usingDial }) {
                             Icon(
@@ -164,15 +173,32 @@ fun AlarmsScreen(gridConfig: GridLayoutConfig, alarms: List<Alarm>, onAlarmsChan
                             }
 
                             TextButton(onClick = {
-                                val newAlarm = Alarm(
-                                    id = UUID.randomUUID().toString(),
-                                    hour = timePickerState.hour,
-                                    minute = timePickerState.minute,
-                                    useOnce = useOnce
+                                var newX = 0
+                                var newY = 0
+                                var found = false
+
+                                for (y in 0 until gridConfig.rows) {
+                                    for (x in 0 until gridConfig.columns) {
+                                        if (!alarms.any { it.x == x && it.y == y }) {
+                                            newX = x
+                                            newY = y
+                                            found = true
+                                            break
+                                        }
+                                    }
+                                    if (found) break
+                                }
+
+                                onAddAlarm(
+                                    Alarm(
+                                        id = UUID.randomUUID().toString(),
+                                        hour = timePickerState.hour,
+                                        minute = timePickerState.minute,
+                                        useOnce = useOnce,
+                                        x = newX,
+                                        y = newY
+                                    )
                                 )
-                                val updatedAlarms = alarms.toMutableList().apply { add(newAlarm) }
-                                onAlarmsChange(updatedAlarms)
-                                alarmStorage.saveAlarms(updatedAlarms)
                                 showDialog = false
                             }) {
                                 Text("Add")
@@ -184,7 +210,7 @@ fun AlarmsScreen(gridConfig: GridLayoutConfig, alarms: List<Alarm>, onAlarmsChan
                     // TextButton(onClick = { showDialog = false }) {
                     //     Text("Cancel")
                     // }
-            }
+                }
             )
 
         }
@@ -194,16 +220,32 @@ fun AlarmsScreen(gridConfig: GridLayoutConfig, alarms: List<Alarm>, onAlarmsChan
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AlarmItem(alarm: Alarm, onToggle: (Boolean) -> Unit, onDelete: () -> Unit, showEdges: Boolean) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(120.dp)  //Default hight
-            .then(if (showEdges) Modifier.border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary), RoundedCornerShape(8.dp)) else Modifier)
-            .combinedClickable(
-                onClick = { /* TODO: Implement edit alarm */ },
-                onLongClick = { onDelete() }
-            )
+fun AlarmItem(
+    alarm: Alarm,
+    alarms: List<Alarm>,
+    gridConfig: GridLayoutConfig,
+    cellWidth: Dp,
+    cellHeight: Dp,
+    onUpdateAlarm: (Alarm) -> Unit,
+    onDelete: () -> Unit,
+    showEdges: Boolean,
+    isAnyTimerDragging: Boolean,
+    onDraggingChange: (Boolean) -> Unit,
+    gridContainerOffset: Offset
+) {
+    ItemCard(
+        item = alarm,
+        items = alarms,
+        gridConfig = gridConfig,
+        cellWidth = cellWidth,
+        cellHeight = cellHeight,
+        onUpdateItem = { onUpdateAlarm(it as Alarm) },
+        onDraggingChange = onDraggingChange,
+        isDragging = isAnyTimerDragging,
+        showEdges = showEdges,
+        containerColor = if (alarm.isEnabled) MaterialTheme.colorScheme.primaryContainer else Color.DarkGray,
+        modifier = Modifier.fillMaxSize(),
+        gridContainerOffset = gridContainerOffset
     ) {
         Column(
             modifier = Modifier
@@ -220,7 +262,10 @@ fun AlarmItem(alarm: Alarm, onToggle: (Boolean) -> Unit, onDelete: () -> Unit, s
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(text = if (alarm.useOnce) "Once" else "Repeat")
-                Switch(checked = alarm.isEnabled, onCheckedChange = onToggle)
+                Switch(
+                    checked = alarm.isEnabled,
+                    onCheckedChange = { onUpdateAlarm(alarm.copy(isEnabled = it)) }
+                )
             }
         }
     }

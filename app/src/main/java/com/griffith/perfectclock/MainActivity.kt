@@ -30,6 +30,8 @@ import com.griffith.perfectclock.TimerStorage
 import android.os.Build
 import androidx.annotation.RequiresApi
 import java.util.Collections.emptyList
+import androidx.compose.runtime.mutableStateListOf
+
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalFoundationApi::class)
@@ -38,7 +40,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            PerfectClockTheme {
+            PerfectClockTheme { 
+                DragOverlay {
                 val context = LocalContext.current
 
                 val pageConfigStorage = remember { PageConfigStorage(context) }
@@ -100,7 +103,29 @@ class MainActivity : ComponentActivity() {
                                         timerStorage.saveTimers(updatedTimers)
                                     }
                                 )
-                                "alarms" -> AlarmsScreen(gridConfig = gridConfig, alarms = alarms, onAlarmsChange = { newAlarms -> alarms = newAlarms.toMutableList() })
+                                "alarms" -> AlarmsScreen(
+                                    gridConfig = gridConfig,
+                                    alarms = alarms,
+                                    onUpdateAlarm = { updatedAlarm ->
+                                        val updatedAlarms = alarms.toMutableList()
+                                        val index = updatedAlarms.indexOfFirst { it.id == updatedAlarm.id }
+                                        if (index != -1) {
+                                            updatedAlarms[index] = updatedAlarm
+                                            alarms = updatedAlarms
+                                            alarmStorage.saveAlarms(updatedAlarms)
+                                        }
+                                    },
+                                    onAddAlarm = { newAlarm ->
+                                        val updatedAlarms = alarms.toMutableList().apply { add(newAlarm) }
+                                        alarms = updatedAlarms
+                                        alarmStorage.saveAlarms(updatedAlarms)
+                                    },
+                                    onDeleteAlarm = { alarmToDelete ->
+                                        val updatedAlarms = alarms.toMutableList().apply { remove(alarmToDelete) }
+                                        alarms = updatedAlarms
+                                        alarmStorage.saveAlarms(updatedAlarms)
+                                    }
+                                )
                                 "stopwatch" -> StopwatchScreen()
                             }
                         }
@@ -182,6 +207,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
     }
 }
 

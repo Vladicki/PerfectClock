@@ -5,6 +5,17 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.util.UUID
 
+
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class PageConfig(
+    val id: String,
+    val title: String,
+    var isEnabled: Boolean = true,
+    val isCustom: Boolean = false
+)
+
 class PageConfigStorage(private val context: Context) {
     private val prefs = context.getSharedPreferences("page_config", Context.MODE_PRIVATE)
     private val gson = Gson()

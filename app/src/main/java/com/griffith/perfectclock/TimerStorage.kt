@@ -3,36 +3,7 @@ package com.griffith.perfectclock
 import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-
-data class Timer(
-    val id: String,
-    var initialSeconds: Int,
-    var remainingSeconds: Int,
-    var isRunning: Boolean = false,
-    var isFinished: Boolean = false,
-    var useOnce: Boolean = true,
-    var isDismissed: Boolean = false,
-    var x: Int = 0,
-    var y: Int = 0,
-    var width: Int = 1,
-    var height: Int = 1
-) {
-    fun getTimeString(): String {
-        val hours = remainingSeconds / 3600
-        val minutes = (remainingSeconds % 3600) / 60
-        val seconds = remainingSeconds % 60
-    return when {
-        hours > 0 ->
-            String.format("%d:%02d:%02d", hours, minutes, seconds)
-
-        minutes > 0 ->
-            String.format("%d:%02d", minutes, seconds)
-
-        else ->
-            String.format("%d", seconds)
-    }
-    }
-}
+import com.griffith.perfectclock.Timer
 
 class TimerStorage(private val context: Context) {
 

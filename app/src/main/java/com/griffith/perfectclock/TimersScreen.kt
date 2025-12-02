@@ -1,23 +1,26 @@
 package com.griffith.perfectclock
 
-import android.R.attr.minWidth
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
-
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -25,19 +28,26 @@ import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.*
-import androidx.compose.material3.OutlinedTextFieldDefaults.contentPadding
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.consumeAllChanges
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -45,11 +55,12 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.onGloballyPositioned
+import com.griffith.perfectclock.components.GridHighlight
+import com.griffith.perfectclock.components.ItemCard
 import kotlinx.coroutines.delay
-import java.nio.file.Files.size
 import java.util.UUID
-import kotlin.concurrent.timer
-import kotlin.math.roundToInt
+import com.griffith.perfectclock.Timer
 
 // ---------------------------
 // TIMER SCREEN MAIN COMPOSABLE
@@ -64,10 +75,9 @@ fun TimersScreen(
     onAddTimer: (Timer) -> Unit,
     onDeleteTimer: (Timer) -> Unit
 ) {
-    val context = LocalContext.current
-    val timerStorage = remember { TimerStorage(context) }
     var showDialog by remember { mutableStateOf(false) }
     var isAnyTimerDragging by remember { mutableStateOf(false) }
+    var gridContainerOffset by remember { mutableStateOf(Offset.Zero) }
 
     // -------------------------
     // ROOT LAYERED CONTAINER
@@ -83,9 +93,14 @@ fun TimersScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(8.dp)
+                .onGloballyPositioned {
+                    gridContainerOffset = it.localToWindow(Offset.Zero)
+                }
         ) {
             val cellWidth = maxWidth / gridConfig.columns
             val cellHeight = maxHeight / gridConfig.rows
+
+            GridHighlight(gridConfig, cellWidth, cellHeight, gridContainerOffset)
 
             timers.forEach { timer ->
                 val timerModifier = Modifier
@@ -108,7 +123,9 @@ fun TimersScreen(
                         onUpdateTimer = onUpdateTimer,
                         onDelete = { onDeleteTimer(timer) },
                         showEdges = gridConfig.showEdges,
-                        onDraggingChange = { isAnyTimerDragging = it }
+                        isAnyTimerDragging = isAnyTimerDragging,
+                        onDraggingChange = { isAnyTimerDragging = it },
+                        gridContainerOffset = gridContainerOffset
                     )
                 }
             }
@@ -215,27 +232,14 @@ fun TimerItem(
     onUpdateTimer: (Timer) -> Unit,
     onDelete: () -> Unit,
     showEdges: Boolean,
-    onDraggingChange: (Boolean) -> Unit
+    isAnyTimerDragging: Boolean,
+    onDraggingChange: (Boolean) -> Unit,
+    gridContainerOffset: Offset
 ) {
     var currentRemainingSeconds by remember(timer.id) { mutableStateOf(timer.remainingSeconds) }
     var isRunning by remember(timer.id) { mutableStateOf(timer.isRunning) }
     var isFinished by remember(timer.id) { mutableStateOf(timer.isFinished) }
-    var isDismissed by remember(timer.id) { mutableStateOf(timer.isDismissed) }
-
-    var offsetX by remember { mutableStateOf(timer.x) }
-    var offsetY by remember { mutableStateOf(timer.y) }
-    var widthInCells by remember { mutableStateOf(timer.width) }
-    var heightInCells by remember { mutableStateOf(timer.height) }
-
-    var isResizing by remember { mutableStateOf(false) }
-    var isDragging by remember { mutableStateOf(false) }
-
-    LaunchedEffect(timer) {
-        offsetX = timer.x
-        offsetY = timer.y
-        widthInCells = timer.width
-        heightInCells = timer.height
-    }
+    val isDismissed by remember(timer.id) { mutableStateOf(timer.isDismissed) }
 
     LaunchedEffect(isRunning) {
         if (isRunning && currentRemainingSeconds > 0) {
@@ -259,97 +263,23 @@ fun TimerItem(
         }
     }
 
-    val density = LocalDensity.current
-    val cellWidthPx = with(density) { cellWidth.toPx() }
-    val cellHeightPx = with(density) { cellHeight.toPx() }
-
-    val cardModifier = Modifier
-        .fillMaxSize()
-        .pointerInput(Unit) {
-            detectDragGestures(
-                onDragStart = { startOffset ->
-                    onDraggingChange(true)
-                    isDragging = true
-                    val resizeHandleSizePx = 24.dp.toPx()
-                    val cardWidth = size.width
-                    val cardHeight = size.height
-
-                    isResizing = startOffset.x > cardWidth - resizeHandleSizePx &&
-                            startOffset.y > cardHeight - resizeHandleSizePx
-                },
-                onDragEnd = {
-                    onDraggingChange(false)
-                    isDragging = false
-                    val updatedTimer = timer.copy(
-                        x = offsetX,
-                        y = offsetY,
-                        width = widthInCells,
-                        height = heightInCells
-                    )
-                    onUpdateTimer(updatedTimer)
-                }
-            ) { change, dragAmount ->
-                change.consumeAllChanges()
-
-                if (isResizing) {
-                    val newWidth = widthInCells + (dragAmount.x / cellWidthPx)
-                    val newHeight = heightInCells + (dragAmount.y / cellHeightPx)
-
-                    val clampedWidth = newWidth.roundToInt().coerceIn(1, gridConfig.columns - offsetX)
-                    val clampedHeight = newHeight.roundToInt().coerceIn(1, gridConfig.rows - offsetY)
-
-                    val collision = timers.any {
-                        it.id != timer.id &&
-                                offsetX < it.x + it.width && offsetX + clampedWidth > it.x &&
-                                offsetY < it.y + it.height && offsetY + clampedHeight > it.y
-                    }
-
-                    if (!collision) {
-                        widthInCells = clampedWidth
-                        heightInCells = clampedHeight
-                    }
-                } else {
-                    val newX = offsetX + (dragAmount.x / cellWidthPx)
-                    val newY = offsetY + (dragAmount.y / cellHeightPx)
-
-                    val clampedX = newX.roundToInt().coerceIn(0, gridConfig.columns - widthInCells)
-                    val clampedY = newY.roundToInt().coerceIn(0, gridConfig.rows - heightInCells)
-
-                    val collision = timers.any {
-                        it.id != timer.id &&
-                                clampedX < it.x + it.width && clampedX + widthInCells > it.x &&
-                                clampedY < it.y + it.height && clampedY + heightInCells > it.y
-                    }
-
-                    if (!collision) {
-                        offsetX = clampedX
-                        offsetY = clampedY
-                    }
-                }
-            }
-        }
-        .then(
-            if (isDragging || showEdges) Modifier.border(
-                BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                RoundedCornerShape(16.dp)
-            ) else Modifier
-        )
-        .combinedClickable(
-            onClick = {},
-            // onLongClick = { onDelete() }
-        )
-
-    Card(
-        modifier = cardModifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = when {
-                isFinished && !isDismissed -> Color(0xFFed6d8b)
-                isRunning -> MaterialTheme.colorScheme.primaryContainer
-                else -> MaterialTheme.colorScheme.surface
-            }
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ItemCard(
+        item = timer,
+        items = timers,
+        gridConfig = gridConfig,
+        cellWidth = cellWidth,
+        cellHeight = cellHeight,
+        onUpdateItem = { onUpdateTimer(it as Timer) },
+        onDraggingChange = onDraggingChange,
+        isDragging = isAnyTimerDragging,
+        showEdges = showEdges,
+        containerColor = when {
+            isFinished && !isDismissed -> Color(0xFFed6d8b)
+            isRunning -> MaterialTheme.colorScheme.primaryContainer
+            else -> MaterialTheme.colorScheme.surface
+        },
+        modifier = Modifier.fillMaxSize(),
+        gridContainerOffset = gridContainerOffset
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
 
@@ -367,45 +297,16 @@ fun TimerItem(
                     .align(Alignment.TopStart)
                     .size(28.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.8f))
-                    .pointerInput(Unit) {
-                        detectDragGestures(
-                            onDragStart = { onDraggingChange(true) },
-                            onDragEnd = {
-                                onDraggingChange(false)
-                                val updatedTimer = timer.copy(
-                                    x = offsetX,
-                                    y = offsetY,
-                                    width = widthInCells,
-                                    height = heightInCells
-                                )
-                                onUpdateTimer(updatedTimer)
-                            }
-                        ) { change, dragAmount ->
-                            change.consumeAllChanges()
-                            val newX = offsetX + (dragAmount.x / cellWidth.value)
-                            val newY = offsetY + (dragAmount.y / cellHeight.value)
-                            val clampedX = newX.roundToInt().coerceIn(0, gridConfig.columns - widthInCells)
-                            val clampedY = newY.roundToInt().coerceIn(0, gridConfig.rows - heightInCells)
-                            val collision = timers.any {
-                                it.id != timer.id &&
-                                        clampedX < it.x + it.width && clampedX + widthInCells > it.x &&
-                                        clampedY < it.y + it.height && clampedY + heightInCells > it.y
-                            }
-                            if (!collision) {
-                                offsetX = clampedX
-                                offsetY = clampedY
-                            }
-                        }
-                    }
+                    .background(Color.Transparent)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Add, // optional icon for visual handle
-                    contentDescription = "Drag Timer",
-                    modifier = Modifier.fillMaxSize(),
-                    tint = Color.Black
-                )
+                // Icon(
+                //     imageVector = Icons.Default.Add, // optional icon for visual handle
+                //     contentDescription = "Drag Timer",
+                //     modifier = Modifier.fillMaxSize(),
+                //     tint = Color.Black.copy(alpha = 0.5f)
+                // )
             }
+
             // + TOP-RIGHT: Close Button
             // Top-left +1:00 button
             Box(modifier = Modifier.fillMaxSize()) {
@@ -504,52 +405,20 @@ fun TimerItem(
             }
 
             // BOTTOM-RIGHT: Resize Handle
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.8f))
-                    .pointerInput(Unit) {
-                        detectDragGestures(
-                            onDragStart = { onDraggingChange(true) },
-                            onDragEnd = {
-                                onDraggingChange(false)
-                                val updatedTimer = timer.copy(
-                                    x = offsetX,
-                                    y = offsetY,
-                                    width = widthInCells,
-                                    height = heightInCells
-                                )
-                                onUpdateTimer(updatedTimer)
-                            }
-                        ) { change, dragAmount ->
-                            change.consumeAllChanges()
-                            val newWidth = widthInCells + (dragAmount.x / cellWidth.value)
-                            val newHeight = heightInCells + (dragAmount.y / cellHeight.value)
-                            val clampedWidth = newWidth.roundToInt().coerceIn(1, gridConfig.columns - offsetX)
-                            val clampedHeight = newHeight.roundToInt().coerceIn(1, gridConfig.rows - offsetY)
-
-                            val collision = timers.any {
-                                it.id != timer.id &&
-                                        offsetX < it.x + it.width && offsetX + clampedWidth > it.x &&
-                                        offsetY < it.y + it.height && offsetY + clampedHeight > it.y
-                            }
-
-                            if (!collision) {
-                                widthInCells = clampedWidth
-                                heightInCells = clampedHeight
-                            }
-                        }
-                    }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.OpenInFull,
-                    contentDescription = "Resize Timer",
-                    modifier = Modifier.fillMaxSize(),
-                    tint = Color.Black
-                )
-            }
+            // Box(
+            //     modifier = Modifier
+            //         .align(Alignment.BottomEnd)
+            //         .size(28.dp)
+            //         .clip(CircleShape)
+            //         .background(Color.White.copy(alpha = 0.8f))
+            // ) {
+            //     Icon(
+            //         imageVector = Icons.Default.OpenInFull,
+            //         contentDescription = "Resize Timer",
+            //         modifier = Modifier.fillMaxSize(),
+            //         tint = Color.Black
+            //     )
+            // }
         }
     }
 }
@@ -577,7 +446,9 @@ fun TimerSetupDialog(
         onDismissRequest = { onClose() },
         confirmButton = {},
         title = { Text("Set Timer", style = MaterialTheme.typography.titleLarge) },
-        modifier = Modifier.width(380.dp).height(600.dp),
+        modifier = Modifier
+            .width(380.dp)
+            .height(600.dp),
         text = {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -630,7 +501,8 @@ fun TimerSetupDialog(
                             Button(
                                 onClick = {
                                     when (key) {
-                                        "⌫" -> if (inputText.isNotEmpty()) inputText = inputText.dropLast(1)
+                                        "⌫" -> if (inputText.isNotEmpty()) inputText =
+                                            inputText.dropLast(1)
                                         "00" -> if (inputText.isNotEmpty() && inputText.length < 6) inputText += "00"
                                         else -> if (inputText.length < 6 && !(inputText.isEmpty() && key == "0")) inputText += key
                                     }
