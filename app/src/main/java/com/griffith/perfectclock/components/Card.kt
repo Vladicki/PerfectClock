@@ -214,8 +214,8 @@ fun <T : GridItem> ItemCard(
             }
         }
         .border(
-            width = if (showEdges || isDragging) 1.dp else 0.dp,
-            color = if (showEdges || isDragging)
+            width = if (showEdges && !isDragging) 1.dp else 0.dp,
+            color = if (showEdges && !isDragging)
                 MaterialTheme.colorScheme.primary
             else Color.Transparent,
             shape = RoundedCornerShape(16.dp)

@@ -39,7 +39,8 @@ class PageConfigStorage(private val context: Context) {
         return mutableListOf(
             PageConfig(id = "timers", title = "Timers", isEnabled = true),
             PageConfig(id = "alarms", title = "Alarms", isEnabled = true),
-            PageConfig(id = "stopwatch", title = "Stopwatch", isEnabled = true)
+            PageConfig(id = "stopwatch", title = "Stopwatch", isEnabled = true),
+            PageConfig(id = "custom", title = "Custom", isEnabled = false, isCustom = true)
         )
     }
 }

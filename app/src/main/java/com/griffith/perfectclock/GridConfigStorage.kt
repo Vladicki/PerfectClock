@@ -5,7 +5,7 @@ import android.content.SharedPreferences
 import com.google.gson.Gson
 
 data class GridLayoutConfig(
-    var columns: Int = 4,
+    var columns: Int = 3,
     var rows: Int = 5,
     var showEdges: Boolean = false
 )

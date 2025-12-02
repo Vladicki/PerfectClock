@@ -49,6 +49,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import com.griffith.perfectclock.components.GridHighlight
+import com.griffith.perfectclock.components.GridBackground
 
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -71,11 +72,9 @@ fun AlarmsScreen(
     val alarmStorage = remember { AlarmStorage(context) }
 
     var showDialog by remember { mutableStateOf(false) }
-    val timePickerState = rememberTimePickerState()
-    var useOnce by remember { mutableStateOf(true) }
     var isAnyTimerDragging by remember { mutableStateOf(false) }
     var gridContainerOffset by remember { mutableStateOf(Offset.Zero) }
-    val haptic = LocalHapticFeedback.current
+    // Removed timePickerState, useOnce, usingDial, haptic from here
 
     Box(modifier = Modifier.fillMaxSize()) {
         GridBackground(gridConfig = gridConfig, isDragging = isAnyTimerDragging)
@@ -132,102 +131,12 @@ fun AlarmsScreen(
         }
 
         if (showDialog) {
-            var usingDial by remember { mutableStateOf(true) }
-
-            AlertDialog(
+            AddAlarmDialog(
                 onDismissRequest = { showDialog = false },
-                title = { Text("Add Alarm") },
-                text = {
-                    Column {
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Dial or Input picker
-                        if (usingDial) {
-                            var lastHour by remember { mutableStateOf(timePickerState.hour) }
-                            var lastMinute by remember { mutableStateOf(timePickerState.minute) }
-
-                            LaunchedEffect(timePickerState.hour, timePickerState.minute) {
-                                if (lastHour != timePickerState.hour || lastMinute != timePickerState.minute) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    lastHour = timePickerState.hour
-                                    lastMinute = timePickerState.minute
-                                }
-                            }
-                            TimePicker(state = timePickerState)
-                        } else {
-                            TimeInput(state = timePickerState)
-                        }
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = !useOnce, onCheckedChange = { useOnce = !it })
-                            Text("Use Once")
-                        }
-                    }
-                },
-                confirmButton = {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(end = 6.dp, bottom = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Toggle keyboard/dial
-                        IconButton(onClick = { usingDial = !usingDial }) {
-                            Icon(
-                                imageVector = if (usingDial) Icons.Default.Keyboard else Icons.Default.AccessTime,
-                                contentDescription = "Toggle Input Mode"
-                            )
-                        }
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Cancel
-                            TextButton(onClick = { showDialog = false }) {
-                                Text("Cancel")
-                            }
-
-                            TextButton(onClick = {
-                                var newX = 0
-                                var newY = 0
-                                var found = false
-
-                                for (y in 0 until gridConfig.rows) {
-                                    for (x in 0 until gridConfig.columns) {
-                                        if (!alarms.any { it.x == x && it.y == y }) {
-                                            newX = x
-                                            newY = y
-                                            found = true
-                                            break
-                                        }
-                                    }
-                                    if (found) break
-                                }
-
-                                onAddAlarm(
-                                    Alarm(
-                                        id = UUID.randomUUID().toString(),
-                                        time = LocalTime.of(timePickerState.hour, timePickerState.minute), // Updated to use LocalTime
-                                        useOnce = useOnce,
-                                        x = newX,
-                                        y = newY
-                                    )
-                                )
-                                showDialog = false
-                            }) {
-                                Text("Add")
-                            }
-                        }
-                    }
-                },
-                dismissButton = {
-                    // TextButton(onClick = { showDialog = false }) {
-                    //     Text("Cancel")
-                    // }
-                }
+                onAddAlarm = onAddAlarm,
+                gridConfig = gridConfig,
+                alarms = alarms
             )
-
         }
     }
 }

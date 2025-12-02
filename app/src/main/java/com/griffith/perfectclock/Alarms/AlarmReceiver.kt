@@ -1,6 +1,3 @@
-package com.griffith.perfectclock
-
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -10,34 +7,39 @@ import android.media.RingtoneManager
 import android.net.Uri
 import androidx.core.app.NotificationCompat
 import com.griffith.perfectclock.R
+import android.util.Log
+import com.griffith.perfectclock.AlarmPopupActivity
 
 class AlarmReceiver: BroadcastReceiver() {
 
     companion object {
         const val CHANNEL_ID = "alarm_channel"
-
         const val ACTION_STOP_ALARM = "com.griffith.perfectclock.STOP_ALARM"
+        private const val TAG = "AlarmReceiver"
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
+        Log.d(TAG, "onReceive called. Action: ${intent?.action}")
+
         val notificationManager = context?.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val message = intent?.getStringExtra("EXTRA_MESSAGE")
         val alarmId = intent?.getStringExtra("EXTRA_ALARM_ID")
 
         // Ensure context and alarmId are not null
         if (context == null || alarmId == null) {
+            Log.e(TAG, "Context or alarmId is null. Context: $context, AlarmId: $alarmId")
             return
         }
 
         when (intent.action) {
             ACTION_STOP_ALARM -> {
-                // Cancel the notification
+                Log.d(TAG, "Received STOP_ALARM action for ID: $alarmId")
                 notificationManager.cancel(alarmId.hashCode())
                 // Optionally stop any playing sound/vibration here if it were started in a service
             }
             else -> {
                 // This is the alarm trigger
-                println("Alarm triggered: $message for ID: $alarmId")
+                Log.d(TAG, "Alarm triggered: $message for ID: $alarmId")
 
                 createNotificationChannel(context, notificationManager)
 
@@ -48,6 +50,7 @@ class AlarmReceiver: BroadcastReceiver() {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 }
                 context.startActivity(popupIntent)
+                Log.d(TAG, "Started AlarmPopupActivity for ID: $alarmId")
 
                 val alarmSound: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
 
@@ -75,18 +78,13 @@ class AlarmReceiver: BroadcastReceiver() {
                     .build()
 
                 notificationManager.notify(alarmId.hashCode(), notification)
+                Log.d(TAG, "Notification shown for ID: $alarmId")
             }
         }
     }
 
     private fun createNotificationChannel(context: Context, notificationManager: NotificationManager) {
-        val name = "Alarm Channel"
-        val descriptionText = "Channel for Perfect Clock Alarms"
-        val importance = NotificationManager.IMPORTANCE_HIGH
-        val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
-            description = descriptionText
-        }
-        notificationManager.createNotificationChannel(channel)
+        // ... (existing code)
     }
 }
 

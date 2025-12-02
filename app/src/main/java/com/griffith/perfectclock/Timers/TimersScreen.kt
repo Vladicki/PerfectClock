@@ -57,14 +57,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.onGloballyPositioned
 import com.griffith.perfectclock.components.GridHighlight
+import com.griffith.perfectclock.components.GridBackground
 import com.griffith.perfectclock.components.ItemCard
 import kotlinx.coroutines.delay
 import java.util.UUID
 import com.griffith.perfectclock.Timer
+import com.griffith.perfectclock.AddTimerDialog // Import the new AddTimerDialog
 
-// ---------------------------
 // TIMER SCREEN MAIN COMPOSABLE
-// ---------------------------
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -80,16 +80,12 @@ fun TimersScreen(
     var gridContainerOffset by remember { mutableStateOf(Offset.Zero) }
     var showShakeItOffDialogForTimer by remember { mutableStateOf<Timer?>(null) } // State for shake it off dialog
 
-    // -------------------------
     // ROOT LAYERED CONTAINER
-    // -------------------------
     Box(modifier = Modifier.fillMaxSize()) {
 
         GridBackground(gridConfig = gridConfig, isDragging = isAnyTimerDragging)
 
-        // -------------------------
         // GRID OF TIMERS
-        // -------------------------
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
@@ -137,9 +133,7 @@ fun TimersScreen(
             }
         }
 
-        // -------------------------
         // FLOATING "ADD TIMER" BUTTON
-        // -------------------------
         FloatingActionButton(
             onClick = { showDialog = true },
             modifier = Modifier
@@ -149,9 +143,7 @@ fun TimersScreen(
             Icon(Icons.Filled.Add, "Add new timer.")
         }
 
-        // -------------------------
         // GLOBAL DISMISS BUTTON
-        // -------------------------
         val showGlobalDismissButton = timers.any { it.isFinished && !it.isDismissed }
         if (showGlobalDismissButton) {
             Button(
@@ -181,13 +173,11 @@ fun TimersScreen(
                 Text("DISMISS")
             }
         }
-    } // END OF ROOT BOX
+    } 
 
-    // -------------------------
     // TIMER SETUP DIALOG
-    // -------------------------
     if (showDialog) {
-        TimerSetupDialog(
+        AddTimerDialog(
             onStart = { hours, minutes, seconds ->
                 val totalSeconds = hours * 3600 + minutes * 60 + seconds
 
@@ -225,9 +215,7 @@ fun TimersScreen(
         )
     }
 
-    // -------------------------
     // SHAKE IT OFF DIALOG FOR TIMERS
-    // -------------------------
     showShakeItOffDialogForTimer?.let { timer ->
         ShakeItOffDialog(
             onShakeDismiss = {
@@ -465,179 +453,6 @@ fun TimerItem(
             //         tint = Color.Black
             //     )
             // }
-        }
-    }
-}
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TimerSetupDialog(
-    onStart: (hours: Int, minutes: Int, seconds: Int) -> Unit,
-    onClose: () -> Unit
-) {
-    var inputText by remember { mutableStateOf("") }
-
-    fun parseTime(): Triple<Int, Int, Int> {
-        val padded = inputText.padStart(6, '0').takeLast(6)
-        val hours = padded.substring(0, 2).toIntOrNull() ?: 0
-        val minutes = padded.substring(2, 4).toIntOrNull() ?: 0
-        val seconds = padded.substring(4, 6).toIntOrNull() ?: 0
-        return Triple(hours, minutes, seconds)
-    }
-
-    val (hours, minutes, seconds) = parseTime()
-
-    AlertDialog(
-        onDismissRequest = { onClose() },
-        confirmButton = {},
-        title = { Text("Set Timer", style = MaterialTheme.typography.titleLarge) },
-        modifier = Modifier
-            .width(380.dp)
-            .height(600.dp),
-        text = {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                // TIME DISPLAY WITH RIGHT-HIGHLIGHTED INPUT
-                val paddedInput = inputText.padStart(6, '0').takeLast(6)
-                val totalLength = paddedInput.length
-
-                val annotatedTime = buildAnnotatedString {
-                    paddedInput.forEachIndexed { i, char ->
-                        val isHighlighted = i >= 6 - totalLength
-                        withStyle(
-                            style = SpanStyle(
-                                color = if (isHighlighted) Color.White else Color.Gray,
-                                fontSize = 42.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        ) {
-                            append(char)
-                        }
-                        // Append h/m/s after every 2 digits
-                        if (i == 1) withStyle(SpanStyle(color = Color.Gray, fontSize = 20.sp)) { append("h ") }
-                        if (i == 3) withStyle(SpanStyle(color = Color.Gray, fontSize = 20.sp)) { append("m ") }
-                        if (i == 5) withStyle(SpanStyle(color = Color.Gray, fontSize = 20.sp)) { append("s") }
-                    }
-                }
-
-                Text(
-                    text = annotatedTime,
-                    modifier = Modifier.padding(vertical = 16.dp)
-                )
-
-                // NUMPAD
-                val keys = listOf(
-                    listOf("1", "2", "3"),
-                    listOf("4", "5", "6"),
-                    listOf("7", "8", "9"),
-                    listOf("00", "0", "⌫")
-                )
-
-                for (row in keys) {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                    ) {
-                        for (key in row) {
-                            Button(
-                                onClick = {
-                                    when (key) {
-                                        "⌫" -> if (inputText.isNotEmpty()) inputText =
-                                            inputText.dropLast(1)
-                                        "00" -> if (inputText.isNotEmpty() && inputText.length < 6) inputText += "00"
-                                        else -> if (inputText.length < 6 && !(inputText.isEmpty() && key == "0")) inputText += key
-                                    }
-                                },
-                                modifier = Modifier
-                                    .width(80.dp)
-                                    .height(60.dp)
-                            ) {
-                                Text(key, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // ACTION BUTTONS
-                Row(
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Button(
-                        onClick = { onClose() },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray),
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(4.dp)
-                            .height(70.dp)
-                    ) {
-                        // Text("X", color = Color.White, fontSize = 18.sp)
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "",
-                            tint = Color.White,
-                        )
-
-                    }
-
-                    val startEnabled = inputText.isNotEmpty()
-                    Button(
-                        onClick = {
-                            val (h, m, s) = parseTime()
-                            if (h + m + s > 0) onStart(h, m, s)
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (startEnabled) Color(0xFF81C784) else Color.Gray
-                        ),
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(4.dp)
-                            .height(70.dp),
-                        enabled = startEnabled
-                    ) {
-                        Text("▶", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-    )
-}
-
-@Composable
-fun GridBackground(
-    gridConfig: GridLayoutConfig,
-    isDragging: Boolean
-) {
-    if (isDragging) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val cellWidth = size.width / gridConfig.columns
-            val cellHeight = size.height / gridConfig.rows
-            val color = Color.DarkGray // Always dark gray when dragging
-
-            for (i in 1 until gridConfig.columns) {
-                drawLine(
-                    color = color,
-                    start = Offset(x = i * cellWidth, y = 0f),
-                    end = Offset(x = i * cellWidth, y = size.height),
-                    strokeWidth = 3.dp.toPx() // Thicker lines
-                )
-            }
-
-            for (i in 1 until gridConfig.rows) {
-                drawLine(
-                    color = color,
-                    start = Offset(x = 0f, y = i * cellHeight),
-                    end = Offset(x = size.width, y = i * cellHeight),
-                    strokeWidth = 3.dp.toPx() // Thicker lines
-                )
-            }
         }
     }
 }

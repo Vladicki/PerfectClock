@@ -46,6 +46,7 @@ fun SettingsDialogContent(
     onPageConfigChange: (MutableList<PageConfig>) -> Unit
 ) {
     var columnsSliderValue by remember { mutableStateOf(gridConfig.columns.toFloat()) }
+    var rowsSliderValue by remember { mutableStateOf(gridConfig.rows.toFloat()) }
     
     var showPages by remember { mutableStateOf(false) }
     var showAddPageDialog by remember { mutableStateOf(false) }
@@ -87,7 +88,39 @@ fun SettingsDialogContent(
             },
             valueRange = 1f..6f,
             // 5 steps between 1 and 6 (for 1, 2, 3, 4, 5, 6)
-            steps = 5,
+            steps = 4,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Rows Slider
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Rows:",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(end = 16.dp)
+            )
+            
+            Text(
+                text = rowsSliderValue.toInt().toString(),
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+            )
+        }
+        
+        Slider(
+            value = rowsSliderValue,
+            onValueChange = { newValue ->
+                rowsSliderValue = newValue
+                val newRows = newValue.toInt()
+                onGridConfigChange(gridConfig.copy(rows = newRows))
+            },
+            valueRange = 1f..6f,
+            steps = 4,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
         )
         
@@ -149,7 +182,7 @@ fun SettingsDialogContent(
                 }
             }
             Button(onClick = { showAddPageDialog = true }, modifier = Modifier.fillMaxWidth()) {
-                Text("TODO custom pages")
+                Text("Custom pages")
             }
         }
 

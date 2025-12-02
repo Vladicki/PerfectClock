@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -13,6 +14,7 @@ class AndroidAlarmScheduler(
 ) : AlarmScheduler {
 
     private val alarmManager = context.getSystemService(AlarmManager::class.java)
+    private val TAG = "AlarmScheduler"
 
     override fun schedule(alarm: Alarm) {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
@@ -44,6 +46,7 @@ class AndroidAlarmScheduler(
             triggerTime,
             pendingIntent
         )
+        Log.d(TAG, "Alarm scheduled: ID=${alarm.id}, Time=${triggerDateTime}, Message=${alarm.message}")
     }
 
     override fun cancel(alarm: Alarm) {
@@ -59,5 +62,6 @@ class AndroidAlarmScheduler(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(pendingIntent)
+        Log.d(TAG, "Alarm cancelled: ID=${alarm.id}")
     }
 }
