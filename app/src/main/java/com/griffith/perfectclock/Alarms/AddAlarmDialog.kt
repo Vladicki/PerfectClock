@@ -1,4 +1,4 @@
-package com.griffith.perfectclock
+package com.griffith.perfectclock.Alarms
 
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import com.griffith.perfectclock.GridLayoutConfig
 import java.time.LocalTime
 import java.util.UUID
 

@@ -1,6 +1,7 @@
 package com.griffith.perfectclock
 
 import com.google.gson.*
+import com.griffith.perfectclock.Alarms.Alarm
 import java.lang.reflect.Type
 
 // Wrapper class to hold a GridItem and its type for JSON serialization

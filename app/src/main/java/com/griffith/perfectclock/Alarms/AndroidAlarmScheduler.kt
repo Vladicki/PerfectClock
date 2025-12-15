@@ -1,10 +1,11 @@
-package com.griffith.perfectclock
+package com.griffith.perfectclock.Alarms
 
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import android.os.Build
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -41,11 +42,24 @@ class AndroidAlarmScheduler(
 
         val triggerTime = triggerDateTime.atZone(ZoneId.systemDefault()).toEpochSecond() * 1000L
 
-        alarmManager.setExactAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP,
-            triggerTime,
-            pendingIntent
-        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerTime,
+                    pendingIntent
+                )
+            } else {
+                Log.e(TAG, "Cannot schedule exact alarms. Missing SCHEDULE_EXACT_ALARM permission.")
+                // Optionally, inform the user or request permission
+            }
+        } else {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                triggerTime,
+                pendingIntent
+            )
+        }
         Log.d(TAG, "Alarm scheduled: ID=${alarm.id}, Time=${triggerDateTime}, Message=${alarm.message}")
     }
 
@@ -63,5 +77,43 @@ class AndroidAlarmScheduler(
         )
         alarmManager.cancel(pendingIntent)
         Log.d(TAG, "Alarm cancelled: ID=${alarm.id}")
+    }
+
+    override fun snooze(alarm: Alarm) {
+        // Cancel the current alarm
+        cancel(alarm)
+
+        // Schedule a new alarm for 5 minutes from now
+        val snoozeTime = System.currentTimeMillis() + 5 * 60 * 1000
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            putExtra("EXTRA_MESSAGE", alarm.message)
+            putExtra("EXTRA_ALARM_ID", alarm.id)
+        }
+
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            alarm.id.hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    snoozeTime,
+                    pendingIntent
+                )
+            } else {
+                Log.e(TAG, "Cannot schedule exact alarms for snooze. Missing SCHEDULE_EXACT_ALARM permission.")
+            }
+        } else {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                snoozeTime,
+                pendingIntent
+            )
+        }
+        Log.d(TAG, "Alarm snoozed: ID=${alarm.id} for 5 minutes.")
     }
 }

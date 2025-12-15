@@ -10,9 +10,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
-import com.griffith.perfectclock.Alarm
-import com.griffith.perfectclock.AlarmItem
+import com.griffith.perfectclock.Alarms.Alarm
+import com.griffith.perfectclock.Alarms.AlarmItem
 import com.griffith.perfectclock.TimerItem
+import com.griffith.perfectclock.Timers.AndroidTimerScheduler
+import com.griffith.perfectclock.Timers.TimerScheduler
+import androidx.compose.ui.platform.LocalContext
 import com.griffith.perfectclock.components.GridBackground
 import com.griffith.perfectclock.components.GridHighlight
 import com.griffith.perfectclock.ShakeItOffDialog
@@ -31,6 +34,8 @@ fun CustomScreen(
     var isAnyItemDragging by remember { mutableStateOf(false) }
     var gridContainerOffset by remember { mutableStateOf(Offset.Zero) }
     var showShakeItOffDialogForTimer by remember { mutableStateOf<Timer?>(null) } // State for shake it off dialog
+    val context = LocalContext.current
+    val timerScheduler = remember { AndroidTimerScheduler(context) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         GridBackground(gridConfig = gridConfig, isDragging = isAnyItemDragging)
@@ -96,7 +101,8 @@ fun CustomScreen(
                                     if (!finishedTimer.isDismissed) {
                                         showShakeItOffDialogForTimer = finishedTimer
                                     }
-                                }
+                                },
+                                timerScheduler = timerScheduler
                             )
                         }
                     }

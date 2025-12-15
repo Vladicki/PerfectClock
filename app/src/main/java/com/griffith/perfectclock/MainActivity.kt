@@ -29,7 +29,7 @@ import com.griffith.perfectclock.components.AppTopAppBar
 import com.griffith.perfectclock.components.BottomTabBar
 import com.griffith.perfectclock.ui.theme.PerfectClockTheme
 import com.griffith.perfectclock.SettingsDialogContent
-import com.griffith.perfectclock.AlarmStorage
+import com.griffith.perfectclock.Alarms.AlarmStorage
 import com.griffith.perfectclock.TimerStorage
 import com.griffith.perfectclock.CustomPageStorage
 import android.os.Build
@@ -42,13 +42,18 @@ import android.net.Uri
 import android.provider.Settings
 import android.util.Log
 import androidx.compose.runtime.rememberCoroutineScope
-import com.griffith.perfectclock.AddAlarmDialog
-import com.griffith.perfectclock.AlarmsScreen
-import com.griffith.perfectclock.Alarm
+import com.griffith.perfectclock.Alarms.AddAlarmDialog
+import com.griffith.perfectclock.Alarms.AlarmsScreen
+import com.griffith.perfectclock.Alarms.Alarm
 import com.griffith.perfectclock.AddTimerDialog
 import com.griffith.perfectclock.CustomScreen
 import kotlinx.coroutines.launch
 import java.util.UUID
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.LaunchedEffect
+import android.Manifest
+import com.griffith.perfectclock.Alarms.AndroidAlarmScheduler
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalFoundationApi::class)
@@ -68,7 +73,27 @@ class MainActivity : ComponentActivity() {
             }
         }
         setContent {
-            PerfectClockTheme { 
+            PerfectClockTheme {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // TIRAMISU is API 33
+                    val launcher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.RequestPermission(),
+                        onResult = { isGranted: Boolean ->
+                            if (isGranted) {
+                                // Permission is granted. You can now show notifications.
+                                Log.d("MainActivity", "POST_NOTIFICATIONS permission granted")
+                            } else {
+                                // Permission is denied. Show a rationale to the user.
+                                Log.d("MainActivity", "POST_NOTIFICATIONS permission denied")
+                                // You might want to show a dialog or a snackbar to explain why
+                                // the permission is needed.
+                            }
+                        }
+                    )
+
+                    LaunchedEffect(key1 = true) {
+                        launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }
                 DragOverlay {
                 val context = LocalContext.current
                 val scope = rememberCoroutineScope()
@@ -87,6 +112,7 @@ class MainActivity : ComponentActivity() {
                 val gridConfigStorage = remember { GridConfigStorage(context) }
                 var gridConfig by remember { mutableStateOf(gridConfigStorage.loadGridConfig()) }
                 val alarmStorage = remember { AlarmStorage(context) }
+                val alarmScheduler = remember { AndroidAlarmScheduler(context) }
                 var alarms by remember { mutableStateOf(alarmStorage.loadAlarms()) }
                 val timerStorage = remember { TimerStorage(context) }
                 var timers by remember { mutableStateOf(timerStorage.loadTimers()) }
@@ -157,20 +183,33 @@ class MainActivity : ComponentActivity() {
                                         val updatedAlarms = alarms.toMutableList()
                                         val index = updatedAlarms.indexOfFirst { it.id == updatedAlarm.id }
                                         if (index != -1) {
+                                            val oldAlarm = updatedAlarms[index]
                                             updatedAlarms[index] = updatedAlarm
                                             alarms = updatedAlarms
                                             alarmStorage.saveAlarms(updatedAlarms)
+
+                                            if (oldAlarm.isEnabled != updatedAlarm.isEnabled) {
+                                                if (updatedAlarm.isEnabled) {
+                                                    alarmScheduler.schedule(updatedAlarm)
+                                                } else {
+                                                    alarmScheduler.cancel(updatedAlarm)
+                                                }
+                                            }
                                         }
                                     },
                                     onAddAlarm = { newAlarm ->
                                         val updatedAlarms = alarms.toMutableList().apply { add(newAlarm) }
                                         alarms = updatedAlarms
                                         alarmStorage.saveAlarms(updatedAlarms)
+                                        if (newAlarm.isEnabled) {
+                                            alarmScheduler.schedule(newAlarm)
+                                        }
                                     },
                                     onDeleteAlarm = { alarmToDelete ->
                                         val updatedAlarms = alarms.toMutableList().apply { remove(alarmToDelete) }
                                         alarms = updatedAlarms
                                         alarmStorage.saveAlarms(updatedAlarms)
+                                        alarmScheduler.cancel(alarmToDelete)
                                     }
                                 )
                                 "stopwatch" -> StopwatchScreen()

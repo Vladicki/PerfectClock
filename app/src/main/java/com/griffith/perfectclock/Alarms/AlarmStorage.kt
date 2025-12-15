@@ -1,4 +1,4 @@
-package com.griffith.perfectclock
+package com.griffith.perfectclock.Alarms
 
 import android.content.Context
 import com.google.gson.Gson

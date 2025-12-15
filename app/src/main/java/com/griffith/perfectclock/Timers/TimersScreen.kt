@@ -62,7 +62,10 @@ import com.griffith.perfectclock.components.ItemCard
 import kotlinx.coroutines.delay
 import java.util.UUID
 import com.griffith.perfectclock.Timer
-import com.griffith.perfectclock.AddTimerDialog // Import the new AddTimerDialog
+import com.griffith.perfectclock.AddTimerDialog
+import com.griffith.perfectclock.Timers.AndroidTimerScheduler
+import com.griffith.perfectclock.Timers.TimerScheduler
+import androidx.compose.ui.platform.LocalContext
 
 // TIMER SCREEN MAIN COMPOSABLE
 @RequiresApi(Build.VERSION_CODES.O)
@@ -78,7 +81,8 @@ fun TimersScreen(
     var showDialog by remember { mutableStateOf(false) }
     var isAnyTimerDragging by remember { mutableStateOf(false) }
     var gridContainerOffset by remember { mutableStateOf(Offset.Zero) }
-    var showShakeItOffDialogForTimer by remember { mutableStateOf<Timer?>(null) } // State for shake it off dialog
+    val context = LocalContext.current
+    val timerScheduler = remember { AndroidTimerScheduler(context) }
 
     // ROOT LAYERED CONTAINER
     Box(modifier = Modifier.fillMaxSize()) {
@@ -118,16 +122,16 @@ fun TimersScreen(
                         cellWidth = cellWidth,
                         cellHeight = cellHeight,
                         onUpdateTimer = onUpdateTimer,
-                        onDelete = { onDeleteTimer(timer) },
+                        onDelete = {
+                            timerScheduler.cancel(timer)
+                            onDeleteTimer(timer)
+                        },
                         showEdges = gridConfig.showEdges,
                         isAnyTimerDragging = isAnyTimerDragging,
                         onDraggingChange = { isAnyTimerDragging = it },
                         gridContainerOffset = gridContainerOffset,
-                        onTimerFinished = { finishedTimer ->
-                            if (!finishedTimer.isDismissed) {
-                                showShakeItOffDialogForTimer = finishedTimer
-                            }
-                        }
+                        onTimerFinished = { finishedTimer -> onUpdateTimer(finishedTimer.copy(isFinished = true, isDismissed = false)) },
+                        timerScheduler = timerScheduler
                     )
                 }
             }
@@ -173,7 +177,7 @@ fun TimersScreen(
                 Text("DISMISS")
             }
         }
-    } 
+    }
 
     // TIMER SETUP DIALOG
     if (showDialog) {
@@ -198,56 +202,21 @@ fun TimersScreen(
                         if (found) break
                     }
 
-                    onAddTimer(
-                        Timer(
-                            id = UUID.randomUUID().toString(),
-                            initialSeconds = totalSeconds,
-                            remainingSeconds = totalSeconds,
-                            isRunning = true,
-                            x = newX,
-                            y = newY
-                        )
+                    val newTimer = Timer(
+                        id = UUID.randomUUID().toString(),
+                        initialSeconds = totalSeconds,
+                        remainingSeconds = totalSeconds,
+                        isRunning = true,
+                        x = newX,
+                        y = newY
                     )
+                    onAddTimer(newTimer)
+                    val triggerAtMillis = System.currentTimeMillis() + totalSeconds * 1000L
+                    timerScheduler.schedule(newTimer, triggerAtMillis)
                 }
                 showDialog = false
             },
             onClose = { showDialog = false }
-        )
-    }
-
-    // SHAKE IT OFF DIALOG FOR TIMERS
-    showShakeItOffDialogForTimer?.let { timer ->
-        ShakeItOffDialog(
-            onShakeDismiss = {
-                if (timer.useOnce) {
-                    onDeleteTimer(timer)
-                } else {
-                    onUpdateTimer(
-                        timer.copy(
-                            remainingSeconds = timer.initialSeconds,
-                            isRunning = false,
-                            isFinished = false,
-                            isDismissed = true
-                        )
-                    )
-                }
-                showShakeItOffDialogForTimer = null
-            },
-            onManualDismiss = {
-                if (timer.useOnce) {
-                    onDeleteTimer(timer)
-                } else {
-                    onUpdateTimer(
-                        timer.copy(
-                            remainingSeconds = timer.initialSeconds,
-                            isRunning = false,
-                            isFinished = false,
-                            isDismissed = true
-                        )
-                    )
-                }
-                showShakeItOffDialogForTimer = null
-            }
         )
     }
 }
@@ -267,33 +236,31 @@ fun TimerItem(
     isAnyTimerDragging: Boolean,
     onDraggingChange: (Boolean) -> Unit,
     gridContainerOffset: Offset,
-    onTimerFinished: (Timer) -> Unit
+    onTimerFinished: (Timer) -> Unit,
+    timerScheduler: TimerScheduler
 ) {
-    var currentRemainingSeconds by remember(timer.id) { mutableStateOf(timer.remainingSeconds) }
-    var isRunning by remember(timer.id) { mutableStateOf(timer.isRunning) }
-    var isFinished by remember(timer.id) { mutableStateOf(timer.isFinished) }
-    val isDismissed by remember(timer.id) { mutableStateOf(timer.isDismissed) }
+    var currentRemainingSeconds by remember(timer.id, timer.remainingSeconds) { mutableStateOf(timer.remainingSeconds) }
+    var isRunning by remember(timer.id, timer.isRunning) { mutableStateOf(timer.isRunning) }
+    var isFinished by remember(timer.id, timer.isFinished) { mutableStateOf(timer.isFinished) }
+    val isDismissed by remember(timer.id, timer.isDismissed) { mutableStateOf(timer.isDismissed) }
 
-    LaunchedEffect(isRunning) {
+    LaunchedEffect(isRunning, currentRemainingSeconds) {
         if (isRunning && currentRemainingSeconds > 0) {
-            while (currentRemainingSeconds > 0 && isRunning) {
-                delay(1000L)
-                currentRemainingSeconds--
-                onUpdateTimer(timer.copy(remainingSeconds = currentRemainingSeconds, isRunning = true))
-            }
-            if (currentRemainingSeconds == 0) {
-                isFinished = true
-                isRunning = false
-                onUpdateTimer(
-                    timer.copy(
-                        remainingSeconds = 0,
-                        isRunning = false,
-                        isFinished = true,
-                        isDismissed = false
-                    )
+            delay(1000L)
+            currentRemainingSeconds--
+            onUpdateTimer(timer.copy(remainingSeconds = currentRemainingSeconds))
+        } else if (currentRemainingSeconds == 0 && isRunning) {
+            isFinished = true
+            isRunning = false
+            onUpdateTimer(
+                timer.copy(
+                    remainingSeconds = 0,
+                    isRunning = false,
+                    isFinished = true,
+                    isDismissed = false
                 )
-                onTimerFinished(timer) // Call the callback when timer finishes
-            }
+            )
+            onTimerFinished(timer)
         }
     }
 
@@ -390,6 +357,7 @@ fun TimerItem(
                 // Reset Button
                 IconButton(
                     onClick = {
+                        timerScheduler.cancel(timer)
                         currentRemainingSeconds = timer.initialSeconds
                         isRunning = false
                         isFinished = false
@@ -413,10 +381,17 @@ fun TimerItem(
 // Play / Stop Button using IconButton
                 IconButton(
                     onClick = {
-                        isRunning = !isRunning
+                        val newIsRunning = !isRunning
+                        isRunning = newIsRunning
+                        if (newIsRunning) {
+                            val triggerAtMillis = System.currentTimeMillis() + currentRemainingSeconds * 1000L
+                            timerScheduler.schedule(timer.copy(remainingSeconds = currentRemainingSeconds, isRunning = true), triggerAtMillis)
+                        } else {
+                            timerScheduler.cancel(timer)
+                        }
                         onUpdateTimer(
                             timer.copy(
-                                isRunning = isRunning,
+                                isRunning = newIsRunning,
                                 remainingSeconds = currentRemainingSeconds
                             )
                         )

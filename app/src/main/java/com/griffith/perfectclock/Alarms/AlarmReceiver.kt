@@ -1,3 +1,6 @@
+package com.griffith.perfectclock.Alarms
+
+import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -5,10 +8,10 @@ import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
 import android.net.Uri
+import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.griffith.perfectclock.R
 import android.util.Log
-import com.griffith.perfectclock.AlarmPopupActivity
 
 class AlarmReceiver: BroadcastReceiver() {
 
@@ -26,8 +29,8 @@ class AlarmReceiver: BroadcastReceiver() {
         val alarmId = intent?.getStringExtra("EXTRA_ALARM_ID")
 
         // Ensure context and alarmId are not null
-        if (context == null || alarmId == null) {
-            Log.e(TAG, "Context or alarmId is null. Context: $context, AlarmId: $alarmId")
+        if (alarmId == null) {
+            Log.e(TAG, "AlarmId is null. Context: $context, AlarmId: $alarmId")
             return
         }
 
@@ -74,7 +77,7 @@ class AlarmReceiver: BroadcastReceiver() {
                     .setCategory(NotificationCompat.CATEGORY_ALARM)
                     .setSound(alarmSound)
                     .setAutoCancel(true) // Dismiss notification when clicked
-                    .addAction(0, "Stop", stopPendingIntent) // Add stop button
+                    .addAction(0, "Dismiss", stopPendingIntent) // Add stop button
                     .build()
 
                 notificationManager.notify(alarmId.hashCode(), notification)
@@ -84,7 +87,16 @@ class AlarmReceiver: BroadcastReceiver() {
     }
 
     private fun createNotificationChannel(context: Context, notificationManager: NotificationManager) {
-        // ... (existing code)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Alarms",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Channel for alarm notifications"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
     }
 }
 

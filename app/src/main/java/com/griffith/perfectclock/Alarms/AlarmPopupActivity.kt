@@ -1,4 +1,4 @@
-package com.griffith.perfectclock
+package com.griffith.perfectclock.Alarms
 
 import android.app.KeyguardManager
 import android.content.Context
@@ -12,6 +12,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import com.griffith.perfectclock.Alarms.Alarm
+import com.griffith.perfectclock.Alarms.AlarmDialog
+import com.griffith.perfectclock.Alarms.AlarmStorage
+import com.griffith.perfectclock.Alarms.AndroidAlarmScheduler
 import com.griffith.perfectclock.ui.theme.PerfectClockTheme
 
 class AlarmPopupActivity : ComponentActivity() {
@@ -40,24 +44,23 @@ class AlarmPopupActivity : ComponentActivity() {
         val alarmId = intent.getStringExtra("EXTRA_ALARM_ID") ?: return
 
         setContent {
-            PerfectClockTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    ShakeItOffDialog(
-                        onShakeDismiss = {
-                            // Logic to dismiss the alarm, potentially stop sound/vibration
-                            // and finish this activity
-                            finish()
-                        },
-                        onManualDismiss = {
-                            // Logic to dismiss the alarm, potentially stop sound/vibration
-                            // and finish this activity
-                            finish()
-                        }
-                    )
-                }
+            val alarmScheduler = AndroidAlarmScheduler(this)
+            val alarmStorage = AlarmStorage(this)
+            val alarms = alarmStorage.loadAlarms()
+            val alarm = alarms.find { it.id == alarmId }
+
+            if (alarm != null) {
+                AlarmDialog(
+                    message = message,
+                    onDismiss = {
+                        alarmScheduler.cancel(alarm)
+                        finish()
+                    },
+                    onSnooze = {
+                        alarmScheduler.snooze(alarm)
+                        finish()
+                    }
+                )
             }
         }
     }

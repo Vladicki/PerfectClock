@@ -162,7 +162,7 @@ fun <T : GridItem> ItemCard(
                     onUpdateItem(updatedItem)
                 }
             ) { change, dragAmount ->
-                change.consumeAllChanges()
+                change.consume()
 
                 if (isResizing) {
                     val newWidth = widthInCells + (dragAmount.x / cellWidthPx)

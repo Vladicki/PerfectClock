@@ -4,7 +4,7 @@ import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
-import com.griffith.perfectclock.Alarm
+import com.griffith.perfectclock.Alarms.Alarm
 
 class CustomPageStorage(private val context: Context) {
 
