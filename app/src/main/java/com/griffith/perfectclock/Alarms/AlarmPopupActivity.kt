@@ -16,9 +16,14 @@ import com.griffith.perfectclock.Alarms.Alarm
 import com.griffith.perfectclock.Alarms.AlarmDialog
 import com.griffith.perfectclock.Alarms.AlarmStorage
 import com.griffith.perfectclock.Alarms.AndroidAlarmScheduler
+import android.media.Ringtone
+import android.media.RingtoneManager
+import android.net.Uri
 import com.griffith.perfectclock.ui.theme.PerfectClockTheme
 
 class AlarmPopupActivity : ComponentActivity() {
+
+    private var ringtone: Ringtone? = null
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,6 +47,11 @@ class AlarmPopupActivity : ComponentActivity() {
 
         val message = intent.getStringExtra("EXTRA_MESSAGE") ?: "Alarm"
         val alarmId = intent.getStringExtra("EXTRA_ALARM_ID") ?: return
+        val ringtoneUriString = intent.getStringExtra("EXTRA_RINGTONE_URI")
+
+        val ringtoneUri = ringtoneUriString?.let { Uri.parse(it) } ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        ringtone = RingtoneManager.getRingtone(this, ringtoneUri)
+        ringtone?.play()
 
         setContent {
             val alarmScheduler = AndroidAlarmScheduler(this)
@@ -51,17 +61,31 @@ class AlarmPopupActivity : ComponentActivity() {
 
             if (alarm != null) {
                 AlarmDialog(
+                    alarmTime = alarm.getTimeString(),
                     message = message,
                     onDismiss = {
+                        ringtone?.stop()
+                        val updatedAlarms = alarms.toMutableList()
+                        val index = updatedAlarms.indexOfFirst { it.id == alarm.id }
+                        if (index != -1) {
+                            updatedAlarms[index] = alarm.copy(isEnabled = false)
+                            alarmStorage.saveAlarms(updatedAlarms)
+                        }
                         alarmScheduler.cancel(alarm)
                         finish()
                     },
                     onSnooze = {
+                        ringtone?.stop()
                         alarmScheduler.snooze(alarm)
                         finish()
                     }
                 )
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        ringtone?.stop()
     }
 }

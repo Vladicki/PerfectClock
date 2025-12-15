@@ -365,7 +365,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 if (showAddTimerDialog) {
-                    val onTimerAddAction: (hours: Int, minutes: Int, seconds: Int) -> Unit = { hours, minutes, seconds ->
+                    val onTimerAddAction: (hours: Int, minutes: Int, seconds: Int, label: String) -> Unit = { hours, minutes, seconds, label ->
                         val totalSeconds = hours * 3600 + minutes * 60 + seconds
                         if (totalSeconds > 0) {
                             if (enabledPages.isNotEmpty() && enabledPages[pagerState.currentPage].id == "custom") {
@@ -392,7 +392,8 @@ class MainActivity : ComponentActivity() {
                                     remainingSeconds = totalSeconds,
                                     isRunning = true,
                                     x = newX,
-                                    y = newY
+                                    y = newY,
+                                    label = label
                                 )
                                 onAddCustomGridItem(newTimer)
                             } else {
@@ -419,7 +420,8 @@ class MainActivity : ComponentActivity() {
                                     remainingSeconds = totalSeconds,
                                     isRunning = true,
                                     x = newX,
-                                    y = newY
+                                    y = newY,
+                                    label = label
                                 )
                                 val updatedTimers = timers.toMutableList().apply { add(newTimer) }
                                 timers = updatedTimers

@@ -13,13 +13,14 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun AlarmDialog(
+    alarmTime: String,
     message: String,
     onDismiss: () -> Unit,
     onSnooze: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = { /* Don't dismiss on outside click */ },
-        title = { Text(text = "Alarm") },
+        title = { Text(text = "Alarm - $alarmTime") },
         text = { Text(text = message) },
         confirmButton = {
             Row(

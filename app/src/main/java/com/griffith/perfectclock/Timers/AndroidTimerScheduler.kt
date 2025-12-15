@@ -19,6 +19,8 @@ class AndroidTimerScheduler(
     override fun schedule(timer: Timer, triggerAtMillis: Long) {
         val intent = Intent(context, TimerReceiver::class.java).apply {
             putExtra("EXTRA_TIMER_ID", timer.id)
+            putExtra("EXTRA_TIMER_DURATION", timer.initialSeconds)
+            putExtra("EXTRA_TIMER_LABEL", timer.label)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(

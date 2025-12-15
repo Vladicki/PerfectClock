@@ -182,7 +182,7 @@ fun TimersScreen(
     // TIMER SETUP DIALOG
     if (showDialog) {
         AddTimerDialog(
-            onStart = { hours, minutes, seconds ->
+            onStart = { hours, minutes, seconds, label ->
                 val totalSeconds = hours * 3600 + minutes * 60 + seconds
 
                 if (totalSeconds > 0) {
@@ -208,7 +208,8 @@ fun TimersScreen(
                         remainingSeconds = totalSeconds,
                         isRunning = true,
                         x = newX,
-                        y = newY
+                        y = newY,
+                        label = label
                     )
                     onAddTimer(newTimer)
                     val triggerAtMillis = System.currentTimeMillis() + totalSeconds * 1000L
@@ -280,7 +281,8 @@ fun TimerItem(
             else -> MaterialTheme.colorScheme.surface
         },
         modifier = Modifier.fillMaxSize(),
-        gridContainerOffset = gridContainerOffset
+        gridContainerOffset = gridContainerOffset,
+        onClick= {}
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
 

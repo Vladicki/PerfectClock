@@ -2,12 +2,16 @@ package com.griffith.perfectclock.Alarms
 
 import android.content.Context
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
+import java.time.LocalTime
 
 class AlarmStorage(private val context: Context) {
 
     private val sharedPreferences = context.getSharedPreferences("alarm_prefs", Context.MODE_PRIVATE)
-    private val gson = Gson()
+    private val gson = GsonBuilder()
+        .registerTypeAdapter(LocalTime::class.java, LocalTimeAdapter())
+        .create()
 
     fun saveAlarms(alarms: List<Alarm>) {
         val json = gson.toJson(alarms)

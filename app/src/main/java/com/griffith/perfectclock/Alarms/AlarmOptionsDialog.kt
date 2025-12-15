@@ -31,18 +31,16 @@ import androidx.compose.ui.platform.LocalContext
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddAlarmDialog(
+fun AlarmOptionsDialog(
     onDismissRequest: () -> Unit,
-    onAddAlarm: (Alarm) -> Unit,
-    gridConfig: GridLayoutConfig,
-    alarms: List<Alarm> // Pass existing alarms to check for available grid spots
+    onUpdateAlarm: (Alarm) -> Unit,
+    alarm: Alarm
 ) {
-    val now = LocalTime.now()
-    val timePickerState = rememberTimePickerState()
-    var useOnce by remember { mutableStateOf(true) }
+    val timePickerState = rememberTimePickerState(initialHour = alarm.time.hour, initialMinute = alarm.time.minute)
+    var useOnce by remember { mutableStateOf(alarm.useOnce) }
     var usingDial by remember { mutableStateOf(true) }
-    var vibrate by remember { mutableStateOf(true) }
-    var ringtoneUri by remember { mutableStateOf<Uri?>(null) }
+    var vibrate by remember { mutableStateOf(alarm.vibrate) }
+    var ringtoneUri by remember { mutableStateOf(alarm.ringtoneUri?.let { Uri.parse(it) }) }
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
 
@@ -68,7 +66,7 @@ fun AddAlarmDialog(
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        title = { Text("Add Alarm") },
+        title = { Text("Edit Alarm") },
         text = {
             Column {
                 Spacer(modifier = Modifier.height(12.dp))
@@ -142,36 +140,17 @@ fun AddAlarmDialog(
                     }
 
                     TextButton(onClick = {
-                        var newX = 0
-                        var newY = 0
-                        var found = false
-
-                        for (y in 0 until gridConfig.rows) {
-                            for (x in 0 until gridConfig.columns) {
-                                if (!alarms.any { it.x == x && it.y == y }) {
-                                    newX = x
-                                    newY = y
-                                    found = true
-                                    break
-                                }
-                            }
-                            if (found) break
-                        }
-
-                        onAddAlarm(
-                            Alarm(
-                                id = UUID.randomUUID().toString(),
+                        onUpdateAlarm(
+                            alarm.copy(
                                 time = LocalTime.of(timePickerState.hour, timePickerState.minute),
                                 useOnce = useOnce,
-                                x = newX,
-                                y = newY,
                                 ringtoneUri = ringtoneUri.toString(),
                                 vibrate = vibrate
                             )
                         )
                         onDismissRequest()
                     }) {
-                        Text("Add")
+                        Text("Save")
                     }
                 }
             }

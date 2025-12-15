@@ -11,6 +11,7 @@ data class Timer(
     var isFinished: Boolean = false,
     var useOnce: Boolean = true,
     var isDismissed: Boolean = false,
+    var label: String = "",
     override var x: Int = 0,
     override var y: Int = 0,
     override var width: Int = 1,

@@ -16,6 +16,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,10 +36,11 @@ import androidx.compose.ui.unit.sp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTimerDialog(
-    onStart: (hours: Int, minutes: Int, seconds: Int) -> Unit,
+    onStart: (hours: Int, minutes: Int, seconds: Int, label: String) -> Unit,
     onClose: () -> Unit
 ) {
     var inputText by remember { mutableStateOf("") }
+    var label by remember { mutableStateOf("") }
 
     fun parseTime(): Triple<Int, Int, Int> {
         val padded = inputText.padStart(6, '0').takeLast(6)
@@ -62,6 +64,15 @@ fun AddTimerDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
+                // Label TextField
+                OutlinedTextField(
+                    value = label,
+                    onValueChange = { label = it },
+                    label = { Text("Label") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
                 // TIME DISPLAY WITH RIGHT-HIGHLIGHTED INPUT
                 val paddedInput = inputText.padStart(6, '0').takeLast(6)
                 val totalLength = paddedInput.length
@@ -153,7 +164,7 @@ fun AddTimerDialog(
                     Button(
                         onClick = {
                             val (h, m, s) = parseTime()
-                            if (h + m + s > 0) onStart(h, m, s)
+                            if (h + m + s > 0) onStart(h, m, s, label)
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (startEnabled) Color(0xFF81C784) else Color.Gray

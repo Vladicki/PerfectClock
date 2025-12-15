@@ -11,6 +11,8 @@ data class Alarm(
     val useOnce: Boolean,
     val isEnabled: Boolean = true,
     val message: String = "",
+    val ringtoneUri: String? = null,
+    val vibrate: Boolean = true,
     override val x: Int = 0,
     override val y: Int = 0,
     override val width: Int = 1,

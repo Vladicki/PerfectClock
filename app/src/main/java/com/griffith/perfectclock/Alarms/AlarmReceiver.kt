@@ -12,6 +12,8 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.griffith.perfectclock.R
 import android.util.Log
+import com.griffith.perfectclock.PerfectClockApp
+import com.griffith.perfectclock.Alarms.AlarmStorage
 
 class AlarmReceiver: BroadcastReceiver() {
 
@@ -44,18 +46,26 @@ class AlarmReceiver: BroadcastReceiver() {
                 // This is the alarm trigger
                 Log.d(TAG, "Alarm triggered: $message for ID: $alarmId")
 
+                val alarmStorage = AlarmStorage(context)
+                val alarms = alarmStorage.loadAlarms()
+                val alarm = alarms.find { it.id == alarmId }
+
+                if (alarm == null) {
+                    Log.e(TAG, "Alarm not found in storage for ID: $alarmId")
+                    return
+                }
+
                 createNotificationChannel(context, notificationManager)
 
                 // Start AlarmPopupActivity
                 val popupIntent = Intent(context, AlarmPopupActivity::class.java).apply {
                     putExtra("EXTRA_MESSAGE", message)
                     putExtra("EXTRA_ALARM_ID", alarmId)
+                    putExtra("EXTRA_RINGTONE_URI", alarm.ringtoneUri)
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 }
                 context.startActivity(popupIntent)
                 Log.d(TAG, "Started AlarmPopupActivity for ID: $alarmId")
-
-                val alarmSound: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
 
                 // Intent for stopping the alarm
                 val stopIntent = Intent(context, AlarmReceiver::class.java).apply {
@@ -69,19 +79,24 @@ class AlarmReceiver: BroadcastReceiver() {
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
 
-                val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+                val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_launcher_foreground) // Use an appropriate icon
-                    .setContentTitle("Alarm")
+                    .setContentTitle("Alarm - ${alarm.getTimeString()}")
                     .setContentText(message)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setCategory(NotificationCompat.CATEGORY_ALARM)
-                    .setSound(alarmSound)
                     .setAutoCancel(true) // Dismiss notification when clicked
                     .addAction(0, "Dismiss", stopPendingIntent) // Add stop button
-                    .build()
 
-                notificationManager.notify(alarmId.hashCode(), notification)
-                Log.d(TAG, "Notification shown for ID: $alarmId")
+                if (alarm.vibrate) {
+                    notificationBuilder.setVibrate(longArrayOf(0, 500, 500, 500))
+                }
+
+                if (!PerfectClockApp.isAppInForeground) {
+                    val notification = notificationBuilder.build()
+                    notificationManager.notify(alarmId.hashCode(), notification)
+                    Log.d(TAG, "Notification shown for ID: $alarmId")
+                }
             }
         }
     }

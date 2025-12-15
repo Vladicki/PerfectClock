@@ -80,7 +80,8 @@ fun CustomScreen(
                                 showEdges = gridConfig.showEdges,
                                 isAnyTimerDragging = isAnyItemDragging, // Reuse this state
                                 onDraggingChange = { isAnyItemDragging = it },
-                                gridContainerOffset = gridContainerOffset
+                                gridContainerOffset = gridContainerOffset,
+                                onClick = { }
                             )
                         }
                         is Timer -> {

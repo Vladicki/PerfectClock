@@ -1,10 +1,12 @@
 package com.griffith.perfectclock.Timers
 
+import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.griffith.perfectclock.R
 import android.util.Log
@@ -23,6 +25,8 @@ class TimerReceiver: BroadcastReceiver() {
 
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val timerId = intent.getStringExtra("EXTRA_TIMER_ID")
+        val duration = intent.getIntExtra("EXTRA_TIMER_DURATION", 0)
+        val label = intent.getStringExtra("EXTRA_TIMER_LABEL")
 
         if (timerId == null) {
             Log.e(TAG, "TimerId is null.")
@@ -37,8 +41,7 @@ class TimerReceiver: BroadcastReceiver() {
             else -> {
                 Log.d(TAG, "Timer finished: ID: $timerId")
 
-                // In a real app, you would create a notification channel here,
-                // similar to the AlarmReceiver. For simplicity, we assume it's created elsewhere.
+                createNotificationChannel(context, notificationManager)
 
                 val dismissIntent = Intent(context, TimerReceiver::class.java).apply {
                     action = ACTION_DISMISS_TIMER
@@ -51,10 +54,12 @@ class TimerReceiver: BroadcastReceiver() {
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
 
-                val notification = NotificationCompat.Builder(context, AlarmReceiver.CHANNEL_ID) // Re-using alarm channel for now
+                val contentText = if (label.isNullOrEmpty()) "Your timer for ${formatDuration(duration)} is done." else "Your timer '$label' for ${formatDuration(duration)} is done."
+
+                val notification = NotificationCompat.Builder(context, CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_launcher_foreground)
                     .setContentTitle("Timer Finished")
-                    .setContentText("Your timer is done.")
+                    .setContentText(contentText)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setCategory(NotificationCompat.CATEGORY_ALARM)
                     .setAutoCancel(true)
@@ -64,6 +69,30 @@ class TimerReceiver: BroadcastReceiver() {
                 notificationManager.notify(timerId.hashCode(), notification)
                 Log.d(TAG, "Notification shown for ID: $timerId")
             }
+        }
+    }
+
+    private fun createNotificationChannel(context: Context, notificationManager: NotificationManager) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Timers",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Channel for timer notifications"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun formatDuration(seconds: Int): String {
+        val hours = seconds / 3600
+        val minutes = (seconds % 3600) / 60
+        val secs = seconds % 60
+        return when {
+            hours > 0 -> String.format("%d:%02d:%02d", hours, minutes, secs)
+            minutes > 0 -> String.format("%d:%02d", minutes, secs)
+            else -> String.format("%d seconds", secs)
         }
     }
 }

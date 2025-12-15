@@ -74,7 +74,9 @@ fun AlarmsScreen(
     val context = LocalContext.current
     val alarmStorage = remember { AlarmStorage(context) }
 
-    var showDialog by remember { mutableStateOf(false) }
+    var showAddDialog by remember { mutableStateOf(false) }
+    var showOptionsDialog by remember { mutableStateOf(false) }
+    var selectedAlarm by remember { mutableStateOf<Alarm?>(null) }
     var isAnyTimerDragging by remember { mutableStateOf(false) }
     var gridContainerOffset by remember { mutableStateOf(Offset.Zero) }
     // Removed timePickerState, useOnce, usingDial, haptic from here
@@ -118,14 +120,18 @@ fun AlarmsScreen(
                         showEdges = gridConfig.showEdges,
                         isAnyTimerDragging = isAnyTimerDragging,
                         onDraggingChange = { isAnyTimerDragging = it },
-                        gridContainerOffset = gridContainerOffset
+                        gridContainerOffset = gridContainerOffset,
+                        onClick = {
+                            selectedAlarm = alarm
+                            showOptionsDialog = true
+                        }
                     )
                 }
             }
         }
 
         FloatingActionButton(
-            onClick = { showDialog = true },
+            onClick = { showAddDialog = true },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
@@ -133,13 +139,26 @@ fun AlarmsScreen(
             Icon(Icons.Filled.Add, "Add new alarm.")
         }
 
-        if (showDialog) {
+        if (showAddDialog) {
             AddAlarmDialog(
-                onDismissRequest = { showDialog = false },
+                onDismissRequest = { showAddDialog = false },
                 onAddAlarm = onAddAlarm,
                 gridConfig = gridConfig,
                 alarms = alarms
             )
+        }
+
+        if (showOptionsDialog) {
+            selectedAlarm?.let {
+                AlarmOptionsDialog(
+                    onDismissRequest = { showOptionsDialog = false },
+                    onUpdateAlarm = { updatedAlarm ->
+                        onUpdateAlarm(updatedAlarm)
+                        showOptionsDialog = false
+                    },
+                    alarm = it
+                )
+            }
         }
     }
 }
@@ -158,7 +177,8 @@ fun AlarmItem(
     showEdges: Boolean,
     isAnyTimerDragging: Boolean,
     onDraggingChange: (Boolean) -> Unit,
-    gridContainerOffset: Offset
+    gridContainerOffset: Offset,
+    onClick: () -> Unit
 ) {
     ItemCard(
         item = alarm,
@@ -172,7 +192,8 @@ fun AlarmItem(
         showEdges = showEdges,
         containerColor = if (alarm.isEnabled) MaterialTheme.colorScheme.primaryContainer else Color.DarkGray,
         modifier = Modifier.fillMaxSize(),
-        gridContainerOffset = gridContainerOffset
+        gridContainerOffset = gridContainerOffset,
+        onClick = onClick
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -186,10 +207,9 @@ fun AlarmItem(
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.Center,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(text = if (alarm.useOnce) "Once" else "Repeat")
                     Switch(
                         checked = alarm.isEnabled,
                         onCheckedChange = { onUpdateAlarm(alarm.copy(isEnabled = it)) }
