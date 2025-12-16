@@ -65,11 +65,18 @@ class AlarmPopupActivity : ComponentActivity() {
                     message = message,
                     onDismiss = {
                         ringtone?.stop()
-                        val updatedAlarms = alarms.toMutableList()
-                        val index = updatedAlarms.indexOfFirst { it.id == alarm.id }
-                        if (index != -1) {
-                            updatedAlarms[index] = alarm.copy(isEnabled = false)
+                        if (alarm.useOnce) {
+                            // If it's a "Use Once" alarm, delete it
+                            val updatedAlarms = alarms.filter { it.id != alarm.id }
                             alarmStorage.saveAlarms(updatedAlarms)
+                        } else {
+                            // Otherwise, just disable it
+                            val updatedAlarms = alarms.toMutableList()
+                            val index = updatedAlarms.indexOfFirst { it.id == alarm.id }
+                            if (index != -1) {
+                                updatedAlarms[index] = alarm.copy(isEnabled = false)
+                                alarmStorage.saveAlarms(updatedAlarms)
+                            }
                         }
                         alarmScheduler.cancel(alarm)
                         finish()

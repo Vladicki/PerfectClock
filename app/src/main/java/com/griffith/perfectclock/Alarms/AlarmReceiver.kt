@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
@@ -40,7 +41,16 @@ class AlarmReceiver: BroadcastReceiver() {
             ACTION_STOP_ALARM -> {
                 Log.d(TAG, "Received STOP_ALARM action for ID: $alarmId")
                 notificationManager.cancel(alarmId.hashCode())
-                // Optionally stop any playing sound/vibration here if it were started in a service
+
+                // Delete the alarm if it's a "Use Once" alarm
+                val alarmStorage = AlarmStorage(context)
+                val alarms = alarmStorage.loadAlarms()
+                val alarm = alarms.find { it.id == alarmId }
+                if (alarm != null && alarm.useOnce) {
+                    val updatedAlarms = alarms.filter { it.id != alarmId }
+                    alarmStorage.saveAlarms(updatedAlarms)
+                    Log.d(TAG, "Deleted 'Use Once' alarm with ID: $alarmId")
+                }
             }
             else -> {
                 // This is the alarm trigger
@@ -79,14 +89,20 @@ class AlarmReceiver: BroadcastReceiver() {
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
 
+                val defaultAlarmUri = getDefaultAlarmUri()
+
                 val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_launcher_foreground) // Use an appropriate icon
                     .setContentTitle("Alarm - ${alarm.getTimeString()}")
                     .setContentText(message)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setCategory(NotificationCompat.CATEGORY_ALARM)
-                    .setAutoCancel(true) // Dismiss notification when clicked
+                    .setAutoCancel(false) // Dismiss notification when clicked
                     .addAction(0, "Dismiss", stopPendingIntent) // Add stop button
+
+                defaultAlarmUri?.let { uri ->
+                notificationBuilder.setSound(uri)
+                }
 
                 if (alarm.vibrate) {
                     notificationBuilder.setVibrate(longArrayOf(0, 500, 500, 500))
@@ -103,15 +119,31 @@ class AlarmReceiver: BroadcastReceiver() {
 
     private fun createNotificationChannel(context: Context, notificationManager: NotificationManager) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val defaultAlarmUri = getDefaultAlarmUri()
+
+        // Define AudioAttributes for the alarm sound
+        val audioAttributes = AudioAttributes.Builder()
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .setUsage(AudioAttributes.USAGE_ALARM) // Key line to ensure it behaves like an alarm
+            .build()
+
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Alarms",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Channel for alarm notifications"
+                defaultAlarmUri?.let { uri ->
+                setSound(uri, audioAttributes)
+            }
             }
             notificationManager.createNotificationChannel(channel)
         }
     }
+    private fun getDefaultAlarmUri(): Uri? {
+    // Get the URI for the default alarm sound
+    return RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+    }
+
 }
 
