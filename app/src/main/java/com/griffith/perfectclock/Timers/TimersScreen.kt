@@ -67,6 +67,8 @@ import com.griffith.perfectclock.Timers.AndroidTimerScheduler
 import com.griffith.perfectclock.Timers.TimerScheduler
 import androidx.compose.ui.platform.LocalContext
 
+import com.griffith.perfectclock.ShakeItOffDialog
+
 // TIMER SCREEN MAIN COMPOSABLE
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -81,6 +83,7 @@ fun TimersScreen(
     var showDialog by remember { mutableStateOf(false) }
     var isAnyTimerDragging by remember { mutableStateOf(false) }
     var gridContainerOffset by remember { mutableStateOf(Offset.Zero) }
+    var showShakeItOffDialogForTimer by remember { mutableStateOf<Timer?>(null) } // State for shake it off dialog
     val context = LocalContext.current
     val timerScheduler = remember { AndroidTimerScheduler(context) }
 
@@ -130,7 +133,11 @@ fun TimersScreen(
                         isAnyTimerDragging = isAnyTimerDragging,
                         onDraggingChange = { isAnyTimerDragging = it },
                         gridContainerOffset = gridContainerOffset,
-                        onTimerFinished = { finishedTimer -> onUpdateTimer(finishedTimer.copy(isFinished = true, isDismissed = false)) },
+                        onTimerFinished = { finishedTimer ->
+                            if (!finishedTimer.isDismissed) {
+                                showShakeItOffDialogForTimer = finishedTimer
+                            }
+                        },
                         timerScheduler = timerScheduler
                     )
                 }
@@ -145,37 +152,6 @@ fun TimersScreen(
                 .padding(16.dp)
         ) {
             Icon(Icons.Filled.Add, "Add new timer.")
-        }
-
-        // GLOBAL DISMISS BUTTON
-        val showGlobalDismissButton = timers.any { it.isFinished && !it.isDismissed }
-        if (showGlobalDismissButton) {
-            Button(
-                onClick = {
-                    val timersToProcess = timers.filter { it.isFinished && !it.isDismissed }
-                    timersToProcess.forEach { timerToDismiss ->
-                        if (timerToDismiss.useOnce) {
-                            onDeleteTimer(timerToDismiss)
-                        } else {
-                            onUpdateTimer(
-                                timerToDismiss.copy(
-                                    remainingSeconds = timerToDismiss.initialSeconds,
-                                    isRunning = false,
-                                    isFinished = false,
-                                    isDismissed = true
-                                )
-                            )
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFed6d8b))
-            ) {
-                Text("DISMISS")
-            }
         }
     }
 
@@ -218,6 +194,42 @@ fun TimersScreen(
                 showDialog = false
             },
             onClose = { showDialog = false }
+        )
+    }
+
+    // SHAKE IT OFF DIALOG FOR TIMERS
+    showShakeItOffDialogForTimer?.let { timer ->
+        ShakeItOffDialog(
+            onShakeDismiss = {
+                if (timer.useOnce) {
+                    onDeleteTimer(timer)
+                } else {
+                    onUpdateTimer(
+                        timer.copy(
+                            remainingSeconds = timer.initialSeconds,
+                            isRunning = false,
+                            isFinished = true,
+                            isDismissed = true
+                        )
+                    )
+                }
+                showShakeItOffDialogForTimer = null
+            },
+            onManualDismiss = {
+                if (timer.useOnce) {
+                    onDeleteTimer(timer)
+                } else {
+                    onUpdateTimer(
+                        timer.copy(
+                            remainingSeconds = timer.initialSeconds,
+                            isRunning = false,
+                            isFinished = true,
+                            isDismissed = true
+                        )
+                    )
+                }
+                showShakeItOffDialogForTimer = null
+            }
         )
     }
 }

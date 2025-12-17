@@ -126,32 +126,6 @@ fun SettingsDialogContent(
         
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Show Grid Edges Checkbox
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .selectable(
-                    selected = gridConfig.showEdges,
-                    onClick = { onGridConfigChange(gridConfig.copy(showEdges = !gridConfig.showEdges)) },
-                    role = Role.Checkbox
-                )
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = gridConfig.showEdges,
-                onCheckedChange = null 
-            )
-            Text(
-                text = "Display Grid Edges",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(start = 16.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         Button(onClick = { showPages = !showPages }, modifier = Modifier.fillMaxWidth()) {
             Text(if (showPages) "Hide Pages" else "Pages")
         }
